@@ -1,3 +1,6 @@
+[![Unit Tests](https://github.com/mpm-tu-berlin/eflips-db/actions/workflows/unittests.yml/badge.svg)](https://github.com/mpm-tu-berlin/eflips-db/actions/workflows/unittests.yml) 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 # eflips-db
 
 This repository contains both the *reference specification* and an *SQLALchemy implementation* of the eFLIPS database.
