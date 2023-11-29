@@ -56,9 +56,11 @@ jobs:
         run:
           poetry run pytest
         env:
-          DATABASE_URL: postgis://user:password@localhost/database
+          DATABASE_URL: postgresql://user:password@localhost/database
           POSTGRES_HOST: localhost
           # The default PostgreSQL port
           POSTGRES_PORT: 5432
+
+          PYTHONPATH: ${{ github.workspace }}
 
 
