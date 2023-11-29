@@ -1,6 +1,6 @@
 name: Check Documentation on Pull Request
+on: pull_request
 
-on: [pull_request]
 
 env:
   PYTHON_VERSION: "3.12"
@@ -17,7 +17,6 @@ jobs:
       # We do not need SSH Keys, .. , as we only need the dev dependencies for building sphinx doc, nothing else
       - name: Check out code
         uses: actions/checkout@v4
-
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v4
         with:
@@ -35,5 +34,5 @@ jobs:
       # Otherwise, GH Action will fail.
       - name: Compile Sphinx Documentation (Check for errors)
         run: |
-          cd docs/
+          cd doc/
           poetry run sphinx-build -b html . _build -W -a
