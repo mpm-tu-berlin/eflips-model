@@ -11,6 +11,7 @@ copyright = "2023, Technische Universität Berlin"
 author = "Ludger Heide"
 release = "0.1.0"
 
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
@@ -26,5 +27,5 @@ autoapi_dirs = ["../eflips/"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_theme = "classic"
 html_static_path = ["_static"]

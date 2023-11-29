@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 class Line(Base):
     """
-    The Line represents a bus line, which is a collection of :class:`Route`s that belong together. This may not
+    The Line represents a bus line, which is a collection of :class:`Route` that belong together. This may not
     include all routes that a bus on this line takes over its service day, since depot and deadhead routes are not
     included (they can be shared between multiple lines).
     """
@@ -95,13 +95,28 @@ class Route(Base):
 
 
 class VoltageLevel(PyEnum):
+    """
+    The voltage level of a charging infrastructure. Used in analysis and simulation to determine grid load.
+    """
+
     LV = auto()
+    """Low voltage, e.g. 400V three- phase"""
+
     MV = auto()
+    """Medium Voltage, e.g. 10kV distribution grid"""
 
 
 class ChargeType(PyEnum):
+    """
+    The type of charging infrastructure. Only vehicle types with opportunity charging can charge at opportunity
+    charging stations.
+    """
+
     DEPOT = auto()
+    """Only charge when vehicle is not on a rotation"""
+
     OPPORTUNITY = auto()
+    """Aka „terminus charging“. While on a rotation, charge in the breaks between trips"""
 
 
 class Station(Base):
@@ -202,8 +217,14 @@ class Station(Base):
 
 
 class TripType(PyEnum):
+    """
+    The type of a trip. Used in analysis to determine schedule efficiency.
+    """
+
     EMPTY = auto()
+    """= deadheading, vehicle if repositioning itself for passenger trip"""
     PASSENGER = auto()
+    """Passengers may board"""
 
 
 class Trip(Base):
