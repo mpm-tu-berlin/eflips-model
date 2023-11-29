@@ -1,20 +1,19 @@
 from datetime import datetime, timedelta
-from enum import Enum as PyEnum, auto
-from typing import List
-from typing import TYPE_CHECKING
+from enum import auto, Enum as PyEnum
+from typing import List, TYPE_CHECKING
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     BigInteger,
-    ForeignKey,
-    Text,
-    Float,
     Boolean,
     CheckConstraint,
     DateTime,
+    Enum as SqlEnum,
+    Float,
+    ForeignKey,
     Interval,
+    Text,
 )
-from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from eflips.model import Base
@@ -91,6 +90,8 @@ class Route(Base):
     The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
     Use WGS84 coordinates (EPSG:4326).
     """
+
+    trips: Mapped[List["Trip"]] = relationship("Trip", back_populates="route")
 
 
 class VoltageLevel(PyEnum):
@@ -173,6 +174,15 @@ class Station(Base):
         "StopTime", back_populates="station"
     )
 
+    trips_departing: Mapped[List["Trip"]] = relationship(
+        "Trip",
+        back_populates="departure_station",
+        foreign_keys="Trip.departure_station_id",
+    )
+    trips_arriving: Mapped[List["Trip"]] = relationship(
+        "Trip", back_populates="arrival_station", foreign_keys="Trip.arrival_station_id"
+    )
+
     # Create a check constraint to ensure that the charging infrastructure is only set if the station is electrified.
     __table_args__ = (
         CheckConstraint(
@@ -187,6 +197,83 @@ class Station(Base):
             "AND charge_type IS NULL "
             "AND voltage_level IS NULL)",
             name="station_electrified_check",
+        ),
+    )
+
+
+class TripType(PyEnum):
+    EMPTY = auto()
+    PASSENGER = auto()
+
+
+class Trip(Base):
+    """
+    A trip is a single run of a bus on a :class:`Route`. It is part of a :class:`Rotation`.
+    """
+
+    __tablename__ = "Trip"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    """The unique identifier of the battery type. Auto-incremented."""
+
+    scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
+    """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
+    scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="trips")
+    """The scenario."""
+
+    route_id: Mapped[int] = mapped_column(ForeignKey("Route.id"), nullable=False)
+    """The unique identifier of the route. Foreign key to :attr:`Route.id`."""
+    route: Mapped[Route] = relationship("Route", back_populates="trips")
+    """The route."""
+
+    # rotation_id: Mapped[int] = mapped_column(ForeignKey("Rotation.id"), nullable=False)
+    # """The unique identifier of the rotation. Foreign key to :attr:`Rotation.id`."""
+    # rotation: Mapped["Rotation"] = relationship("Rotation", back_populates="trips")
+    # """The rotation.""" #TODO: Enable
+
+    departure_station_id: Mapped[int] = mapped_column(
+        ForeignKey("Station.id"), nullable=False
+    )
+    """The unique identifier of the departure station. Foreign key to :attr:`Station.id`."""
+    departure_station: Mapped[Station] = relationship(
+        "Station", back_populates="trips_departing", foreign_keys=[departure_station_id]
+    )
+    """The departure station."""
+
+    departure_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    """The departure time at the first station."""
+
+    arrival_station_id: Mapped[int] = mapped_column(
+        ForeignKey("Station.id"), nullable=False
+    )
+    """The unique identifier of the arrival station. Foreign key to :attr:`Station.id`."""
+    arrival_station: Mapped[Station] = relationship(
+        "Station", back_populates="trips_arriving", foreign_keys=[arrival_station_id]
+    )
+    """The arrival station."""
+
+    arrival_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    """The arrival time at the last station."""
+
+    trip_type = mapped_column(SqlEnum(TripType), nullable=False)
+    """The type of the trip. Either `EMPTY` or `PASSENGER`."""
+
+    level_of_loading = mapped_column(Float, nullable=True)
+    """The level of loading of the bus. This is a mass in kg."""
+
+    stop_times: Mapped[List["StopTime"]] = relationship(
+        "StopTime", back_populates="trip"
+    )
+
+    # Create a check constraint to ensure that the arrival time is after the departure time.
+    __table_args__ = (
+        CheckConstraint(
+            "arrival_time > departure_time",
+            name="trip_arrival_after_departure_check",
         ),
     )
 
@@ -214,10 +301,10 @@ class StopTime(Base):
     station: Mapped[Station] = relationship("Station", back_populates="stop_times")
     """The station."""
 
-    # trip_id: Mapped[int] = mapped_column(ForeignKey("Trip.id"), nullable=False)
-    # """The unique identifier of the trip. Foreign key to :attr:`Trip.id`."""
-    # trip: Mapped["Trip"] = relationship("Trip", back_populates="stop_times")
-    # """The trip.""" #TODO: Enable once trip is done
+    trip_id: Mapped[int] = mapped_column(ForeignKey("Trip.id"), nullable=False)
+    """The unique identifier of the trip. Foreign key to :attr:`Trip.id`."""
+    trip: Mapped["Trip"] = relationship("Trip", back_populates="stop_times")
+    """The trip."""
 
     ordinal: Mapped[int] = mapped_column(BigInteger, nullable=False)
     """The ordinal of the stop time. Starts at 0."""
