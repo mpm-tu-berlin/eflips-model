@@ -1,15 +1,10 @@
-import copy
-from abc import ABCMeta
 from datetime import datetime
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 
-import sqlalchemy.orm
 from sqlalchemy import (
-    Column,
     BigInteger,
     Text,
     DateTime,
-    JSON,
     ForeignKey,
     Integer,
     func,
@@ -49,7 +44,10 @@ class Scenario(Base):
     )
     """The time the scenario was created. Automatically set to the current time at creation."""
     finished: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
-    """The time the simulation was finished. Automatically set to the current time at simulation end. Null if not yet finished."""
+    """
+    The time the simulation was finished. Automatically set to the current time at simulation end. Null if not yet 
+    finished.
+    """
     simba_options: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSONB, nullable=True
     )
