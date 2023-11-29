@@ -1,21 +1,46 @@
 name: Lint
+on: pull_request
 
-on:
-  - pull_request
-  - workflow_dispatch
+env:
+  PYTHON_VERSION: "3.12"
+  POETRY_VERSION: "1.7.1"
+  POETRY_URL: https://install.python-poetry.org
 
 jobs:
   black:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: psf/black@stable
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+      - name: Install Dependencies
+        run: |
+          poetry install --no-root
+      - name: Run black
+        run: poetry run black --check .
 
   mypy:
     runs-on: ubuntu-latest
     steps:
-      # or specify a path!
-      - uses: jpetrucciani/mypy-check@master
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
         with:
-          mypy_flags: '--explicit-package-bases'
-          path: 'eflips'
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+      - name: Install Dependencies
+        run: |
+          poetry install --no-root
+      - name: Run mypy
+        run: poetry run mypy eflips --explicit-package-bases

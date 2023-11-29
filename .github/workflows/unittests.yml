@@ -1,7 +1,6 @@
 name: Unit Tests
-on:
-  - pull_request
-  - workflow_dispatch
+on: pull_request
+
 env:
   PYTHON_VERSION: "3.11"
   POETRY_URL: https://install.python-poetry.org
