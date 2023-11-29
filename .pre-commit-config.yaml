@@ -21,5 +21,6 @@ repos:
     rev: 'v1.7.1'  # Use the sha / tag you want to point at
     hooks:
       - id: mypy
+        exclude: ^tests/
         args: [ --explicit-package-bases, --ignore-missing-imports ]
 

@@ -1,25 +1,24 @@
 from datetime import datetime
-from typing import Dict, Any, List
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
-    Text,
-    DateTime,
-    ForeignKey,
-    Integer,
-    func,
-    Float,
-    CheckConstraint,
     Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    func,
+    Integer,
+    Text,
 )
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import mapped_column, Mapped, relationship, Session, make_transient
+from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, Session
 
 from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Route, Line, Station, StopTime
+    from eflips.model import Route, Line, Station, StopTime, Trip
 
 
 class Scenario(Base):
@@ -94,6 +93,9 @@ class Scenario(Base):
     """A list of stations."""
     stop_times: Mapped[List["StopTime"]] = relationship(
         "StopTime", back_populates="scenario", cascade="all, delete"
+    )
+    trips: Mapped[List["Trip"]] = relationship(
+        "Trip", back_populates="scenario", cascade="all, delete"
     )
 
     @staticmethod
@@ -170,6 +172,12 @@ class Scenario(Base):
             self._copy_object(station, session, scenario_copy)
             station_id_map[original_id] = station
 
+        trip_id_map: Dict[int, "Trip"] = {}
+        for trip in self.trips:
+            original_id = trip.id
+            self._copy_object(trip, session, scenario_copy)
+            trip_id_map[original_id] = trip
+
         # This assigns the new ids
         session.flush()
 
@@ -211,7 +219,30 @@ class Scenario(Base):
 
         # Line <-> Route
         for route in scenario_copy.routes:
-            route.line_id = line_id_map[route.line_id].id
+            if route.line_id is not None:
+                route.line_id = line_id_map[route.line_id].id
+
+        # Station <-> StopTime, trips_departing, trips_arriving
+        for station in scenario_copy.stations:
+            for stop_time in station.stop_times:
+                stop_time.station_id = station_id_map[stop_time.station_id].id
+            for trip in station.trips_departing:
+                trip.departure_station_id = station_id_map[trip.departure_station_id].id
+            for trip in station.trips_arriving:
+                trip.arrival_station_id = station_id_map[trip.arrival_station_id].id
+
+        # Trip <-> StopTime
+        for trip in scenario_copy.trips:
+            for stop_time in trip.stop_times:
+                stop_time.trip_id = trip_id_map[stop_time.trip_id].id
+            trip.route_id = route_id_map[trip.route_id].id
+            trip.departure_station_id = station_id_map[trip.departure_station_id].id
+            trip.arrival_station_id = station_id_map[trip.arrival_station_id].id
+
+        # Trip <-> StopTime
+        for trip in scenario_copy.trips:
+            for stop_time in trip.stop_times:
+                stop_time.trip_id = trip_id_map[stop_time.trip_id].id
 
         session.flush()
         return scenario_copy
