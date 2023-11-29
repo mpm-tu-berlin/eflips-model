@@ -5,7 +5,7 @@ description = "A common data model for the eflips family of electric vehicle sim
 authors = ["Ludger Heide <ludger.heide@tu-berlin.de>"]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
-packages = [{ include = "eflips/depot" }]
+packages = [{ include = "eflips/model" }]
 
 [tool.poetry.dependencies]
 python = "^3.9"
