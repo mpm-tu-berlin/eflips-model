@@ -1,16 +1,13 @@
-import copy
+import os
 
-import psycopg2
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine
-import os
-
 from sqlalchemy.orm import Session
 
-from eflips.model import Base, VehicleType, BatteryType, Vehicle
-
+from eflips.model import Base, VehicleType, BatteryType, Vehicle, VehicleClass
 from eflips.model import Scenario
+from eflips.model.general import AssocVehicleTypeVehicleClass
 
 
 class TestGeneral:
@@ -62,6 +59,14 @@ class TestGeneral:
             opportunity_charge_capable=True,
         )
         session.add(vehicle_type)
+
+        # Add a VehicleClass
+        vehicle_class = VehicleClass(
+            scenario=scenario,
+            name="Test Vehicle Class",
+            vehicle_types=[vehicle_type],
+        )
+        session.add(vehicle_class)
 
         # Add a vehicle
         vehicle = Vehicle(
@@ -295,3 +300,81 @@ class TestBatteryType(TestGeneral):
         )
         session.add(battery_type)
         session.commit()
+
+
+class TestVehicleClass(TestGeneral):
+    def test_create_vehicle_class(self, session, scenario):
+        # Add a VehicleClass
+        vehicle_class = VehicleClass(
+            scenario=scenario,
+            name="Test Vehicle Class",
+        )
+        session.add(vehicle_class)
+        session.commit()
+
+        # Add a vehicle type
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Test Vehicle Type",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charge_capable=True,
+        )
+        session.add(vehicle_type)
+
+        vehicle_type.vehicle_classes.append(vehicle_class)
+        session.commit()
+
+        # Check the reverse relationship
+        assert vehicle_class.vehicle_types == [vehicle_type]
+
+        # Check the association table
+        assert session.query(AssocVehicleTypeVehicleClass).count() == 1
+
+    def test_vehicle_class_copy_scenarion(self, session, scenario):
+        # Add a VehicleClass
+        vehicle_class = VehicleClass(
+            scenario=scenario,
+            name="Test Vehicle Class",
+        )
+        session.add(vehicle_class)
+        session.commit()
+
+        # Add a vehicle type
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Test Vehicle Type",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charge_capable=True,
+        )
+        session.add(vehicle_type)
+
+        vehicle_type.vehicle_classes.append(vehicle_class)
+        session.commit()
+
+        # Copy the scenario
+        cloned_scenario = scenario.clone(session)
+        session.commit()
+
+        # Load the vehicle type and class in the new scenario
+        cloned_vehicle_type = cloned_scenario.vehicle_types[0]
+        cloned_vehicle_class = cloned_scenario.vehicle_classes[0]
+
+        # Check the forward relationship
+        assert cloned_vehicle_type.vehicle_classes == [cloned_vehicle_class]
+        # Check the reverse relationship
+        assert cloned_vehicle_class.vehicle_types == [cloned_vehicle_type]
+        # Check the association table
+        assert session.query(AssocVehicleTypeVehicleClass).count() == 2
+
+        # Delete the parent scenario
+        session.delete(scenario)
+        session.commit()
+
+        # Check the forward relationship
+        assert cloned_vehicle_type.vehicle_classes == [cloned_vehicle_class]
+        # Check the reverse relationship
+        assert cloned_vehicle_class.vehicle_types == [cloned_vehicle_type]
+        # Check the association table
+        assert session.query(AssocVehicleTypeVehicleClass).count() == 1
