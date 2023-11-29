@@ -1,17 +1,22 @@
 name: Poetry Check
 on: pull_request
 
+env:
+  PYTHON_VERSION: "3.12"
+  POETRY_VERSION: "1.7.1"
+  POETRY_URL: https://install.python-poetry.org
+
 jobs:
   poetry-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Run image
         uses: abatilo/actions-poetry@v2
         with:
-          poetry-version: "1.6.1"
+          poetry-version: ${{ env.POETRY_VERSION }}
       - name: Run poetry check
         run: poetry check
