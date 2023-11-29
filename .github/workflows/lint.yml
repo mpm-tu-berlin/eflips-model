@@ -43,4 +43,4 @@ jobs:
         run: |
           poetry install --no-root
       - name: Run mypy
-        run: poetry run mypy eflips --explicit-package-bases
+        run: poetry run mypy eflips --explicit-package-bases --strict
