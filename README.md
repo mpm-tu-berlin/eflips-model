@@ -51,7 +51,15 @@ We recommend utilizing [PyLint](https://pylint.readthedocs.io/en/latest/index.ht
 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing. The tests are located in the `tests` directory. To run the tests, execute the following command in the root directory of the repository (after installing the `dev` dependencies):
 
+---
+
+**NOTE**: Be aware that the tests will clear the database specified in the `DATABASE_URL` environment variable. Make sure that you are not using a database that you want to keep.
+
+---
+ 
 ```bash
+# Change to your database URL
+export DATABASE_URL=postgresql://user:pass@hostname:port/dbname 
 pytest
 ```
 
