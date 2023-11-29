@@ -29,6 +29,12 @@ Supported databadse backends are [PostgreSQL](https://www.postgresql.org) with t
 
 This package is not expected to be used directly. It is a dependency of the `eflips-*` packages.
 
+This package utilizes GIS extensions through [GeoAlchemy](https://geoalchemy-2.readthedocs.io/en/latest/index.html).
+However, we are not handling geometry on the python side in any special way. You will probably additionally
+need [Shapely](https://shapely.readthedocs.io/en/stable/manual.html)
+and [pyProj](https://pyproj4.github.io/pyproj/stable/), which are not pure python packages and require additional
+dependencies to be installed on the system.
+
 ### Development
 
 We utilize the [GitHub Flow](https://docs.github.com/get-started/quickstart/github-flow) branching structure. This means  that the `main` branch is always deployable and that all development happens in feature branches. The feature branches are merged into `main` via pull requests. We utilize the [semantic versioning](https://semver.org/) scheme for versioning.

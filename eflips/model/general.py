@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Dict, Any, List
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     BigInteger,
@@ -16,6 +17,9 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import mapped_column, Mapped, relationship, Session, make_transient
 
 from eflips.model import Base
+
+if TYPE_CHECKING:
+    from eflips.model import Route, Line, Station, StopTime
 
 
 class Scenario(Base):
@@ -73,6 +77,25 @@ class Scenario(Base):
     )
     """A list of vehicles."""
 
+    vehicle_classes: Mapped[List["VehicleClass"]] = relationship(
+        "VehicleClass", back_populates="scenario", cascade="all, delete"
+    )
+    lines: Mapped[List["Line"]] = relationship(
+        "Line", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of lines."""
+    routes: Mapped[List["Route"]] = relationship(
+        "Route", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of routes."""
+    stations: Mapped[List["Station"]] = relationship(
+        "Station", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of stations."""
+    stop_times: Mapped[List["StopTime"]] = relationship(
+        "StopTime", back_populates="scenario", cascade="all, delete"
+    )
+
     @staticmethod
     def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> None:
         """
@@ -123,6 +146,30 @@ class Scenario(Base):
             self._copy_object(vehicle, session, scenario_copy)
             vehicle_id_map[original_id] = vehicle
 
+        vehicle_class_id_map: Dict[int, VehicleClass] = {}
+        for vehicle_class in self.vehicle_classes:
+            original_id = vehicle_class.id
+            self._copy_object(vehicle_class, session, scenario_copy)
+            vehicle_class_id_map[original_id] = vehicle_class
+
+        line_id_map: Dict[int, "Line"] = {}
+        for line in self.lines:
+            original_id = line.id
+            self._copy_object(line, session, scenario_copy)
+            line_id_map[original_id] = line
+
+        route_id_map: Dict[int, "Route"] = {}
+        for route in self.routes:
+            original_id = route.id
+            self._copy_object(route, session, scenario_copy)
+            route_id_map[original_id] = route
+
+        station_id_map: Dict[int, "Station"] = {}
+        for station in self.stations:
+            original_id = station.id
+            self._copy_object(station, session, scenario_copy)
+            station_id_map[original_id] = station
+
         # This assigns the new ids
         session.flush()
 
@@ -139,6 +186,32 @@ class Scenario(Base):
         # Vehicle <-> VehicleType
         for vehicle in scenario_copy.vehicles:
             vehicle.vehicle_type_id = vehicle_type_id_map[vehicle.vehicle_type_id].id
+
+        # VehicleType <-> VehicleClass many-to-many by updating the association table
+        for entry in session.query(AssocVehicleTypeVehicleClass):
+            if (
+                entry.vehicle_type_id in vehicle_type_id_map
+                and entry.vehicle_class_id in vehicle_class_id_map
+            ):
+                new_entry = AssocVehicleTypeVehicleClass(
+                    vehicle_type_id=vehicle_type_id_map[entry.vehicle_type_id].id,
+                    vehicle_class_id=vehicle_class_id_map[entry.vehicle_class_id].id,
+                )
+                session.add(new_entry)
+            elif (
+                entry.vehicle_type_id not in vehicle_type_id_map
+                and entry.vehicle_class_id in vehicle_class_id_map
+            ):
+                pass
+            else:
+                raise ValueError(
+                    "There exists an association between a vehicle type and a vehicle class that is not in"
+                    " the scenario."
+                )
+
+        # Line <-> Route
+        for route in scenario_copy.routes:
+            route.line_id = line_id_map[route.line_id].id
 
         session.flush()
         return scenario_copy
@@ -242,7 +315,14 @@ class VehicleType(Base):
     empty_mass_constraint = CheckConstraint("empty_mass > 0")
     _table_args_list.append(empty_mass_constraint)
 
-    vehicles = relationship("Vehicle", back_populates="vehicle_type")
+    vehicles: Mapped[List["Vehicle"]] = relationship(
+        "Vehicle", back_populates="vehicle_type"
+    )
+    vehicle_classes: Mapped[List["VehicleClass"]] = relationship(
+        "VehicleClass",
+        secondary="AssocVehicleTypeVehicleClass",
+        back_populates="vehicle_types",
+    )
 
     __table_args__ = tuple(_table_args_list)
 
@@ -300,3 +380,57 @@ class Vehicle(Base):
 
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the vehicle."""
+
+
+class VehicleClass(Base):
+    """
+    VehicleClasses allow a many-to-many relationship between vehicles and classes, which may be used for specifying
+    things such as "any 12m bus" or "any 18m bus".
+
+    The VehicleClass table is not used directly, but through the association table AssocVehicleTypeVehicleClass.
+
+    **Support is currently incomplete. THis only exists as a stub (and is used by eflip-LCA), but is not implemented
+    in django.simba or eflips-depot**
+    """
+
+    __tablename__ = "VehicleClass"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    """The unique identifier of the battery type. Auto-incremented."""
+
+    scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
+    """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
+    scenario: Mapped[Scenario] = relationship(
+        "Scenario", back_populates="vehicle_classes"
+    )
+    """The scenario."""
+
+    name: Mapped[str] = mapped_column(Text)
+    """A name for the vehicle class."""
+
+    name_short: Mapped[str] = mapped_column(Text, nullable=True)
+    """An optional short name for the vehicle class."""
+
+    vehicle_types: Mapped[List["VehicleType"]] = relationship(
+        "VehicleType",
+        secondary="AssocVehicleTypeVehicleClass",
+        back_populates="vehicle_classes",
+    )
+
+
+class AssocVehicleTypeVehicleClass(Base):
+    """
+    The association table for the many-to-many relationship between vehicles and classes.
+    """
+
+    __tablename__ = "AssocVehicleTypeVehicleClass"
+
+    vehicle_type_id: Mapped[int] = mapped_column(
+        ForeignKey("VehicleType.id"), primary_key=True
+    )
+    """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
+
+    vehicle_class_id: Mapped[int] = mapped_column(
+        ForeignKey("VehicleClass.id"), primary_key=True
+    )
+    """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
