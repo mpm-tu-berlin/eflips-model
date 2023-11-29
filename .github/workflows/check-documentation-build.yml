@@ -37,5 +37,5 @@ jobs:
       # Otherwise, GH Action will fail.
       - name: Compile Sphinx Documentation (Check for errors)
         run: |
-          cd docs/
+          cd doc/
           poetry run sphinx-build -b html . _build -W -a
