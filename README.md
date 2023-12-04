@@ -64,8 +64,9 @@ Please make sure that your `poetry.lock` and `pyproject.toml` files are consiste
 You can use [pre-commit](https://pre-commit.com/) to ensure that MyPy, Black, and Poetry are run before committing. To
 install pre-commit, execute the following command in the root directory of the repository:
 
-We recommend utilizing [PyLint](https://pylint.readthedocs.io/en/latest/index.html) for static code analysis (but not
-doing everything it says blindly). You can use `pylint eflips` to run PyLint on the code.
+We recommend utilizing linters such as [PyLint](https://pylint.readthedocs.io/en/latest/index.html) for static code
+analysis (but not
+doing everything it says blindly).
 
 #### Testing
 

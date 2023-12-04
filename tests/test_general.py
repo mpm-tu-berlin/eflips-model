@@ -1,12 +1,29 @@
 import os
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from eflips.model import Base, VehicleType, BatteryType, Vehicle, VehicleClass
-from eflips.model import Scenario
+from eflips.model import (
+    AssocRouteStation,
+    Base,
+    BatteryType,
+    Event,
+    EventType,
+    Line,
+    Rotation,
+    Route,
+    Scenario,
+    Station,
+    StopTime,
+    Trip,
+    TripType,
+    Vehicle,
+    VehicleClass,
+    VehicleType,
+)
 from eflips.model.general import AssocVehicleTypeVehicleClass
 
 
@@ -76,6 +93,169 @@ class TestGeneral:
             name_short="TV",
         )
         session.add(vehicle)
+
+        line = Line(
+            scenario=scenario,
+            name="Test Line",
+            name_short="TL",
+        )
+        session.add(line)
+
+        stop_1 = Station(
+            scenario=scenario,
+            name="Test Station 1",
+            name_short="TS1",
+            location="POINT(0 0)",
+            is_electrified=False,
+        )
+        session.add(stop_1)
+
+        stop_2 = Station(
+            scenario=scenario,
+            name="Test Station 2",
+            name_short="TS2",
+            location="POINT(1 0)",
+            is_electrified=False,
+        )
+        session.add(stop_2)
+
+        stop_3 = Station(
+            scenario=scenario,
+            name="Test Station 3",
+            name_short="TS3",
+            location="POINT(2 0)",
+            is_electrified=False,
+        )
+
+        route_1 = Route(
+            scenario=scenario,
+            name="Test Route 1",
+            name_short="TR1",
+            departure_station=stop_1,
+            arrival_station=stop_3,
+            line=line,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=scenario, station=stop_1, route=route_1, elapsed_distance=0
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_2, route=route_1, elapsed_distance=500
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_3, route=route_1, elapsed_distance=1000
+            ),
+        ]
+        route_1.assoc_route_stations = assocs
+        session.add(route_1)
+
+        route_2 = Route(
+            scenario=scenario,
+            name="Test Route 2",
+            name_short="TR2",
+            departure_station=stop_3,
+            arrival_station=stop_1,
+            line=line,
+            distance=1000,
+        )
+        assocs = [
+            AssocRouteStation(
+                scenario=scenario, station=stop_3, route=route_2, elapsed_distance=0
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_2, route=route_2, elapsed_distance=500
+            ),
+            AssocRouteStation(
+                scenario=scenario, station=stop_1, route=route_2, elapsed_distance=1000
+            ),
+        ]
+        route_2.assoc_route_stations = assocs
+        session.add(route_2)
+
+        # Add the schedule objects
+        first_departure = datetime(
+            year=2020, month=1, day=1, hour=12, minute=0, second=0, tzinfo=timezone.utc
+        )
+        interval = timedelta(minutes=30)
+        duration = timedelta(minutes=20)
+        trips = []
+
+        rotation = Rotation(
+            scenario=scenario,
+            trips=trips,
+            vehicle_type=vehicle_type,
+            allow_opportunity_charging=False,
+        )
+        session.add(rotation)
+
+        for i in range(15):
+            # forward
+            trips.append(
+                Trip(
+                    scenario=scenario,
+                    route=route_1,
+                    trip_type=TripType.PASSENGER,
+                    departure_time=first_departure + 2 * i * interval,
+                    arrival_time=first_departure + 2 * i * interval + duration,
+                    rotation=rotation,
+                )
+            )
+            stop_times = [
+                StopTime(
+                    scenario=scenario,
+                    station=stop_1,
+                    arrival_time=first_departure + 2 * i * interval,
+                ),
+                StopTime(
+                    scenario=scenario,
+                    station=stop_2,
+                    arrival_time=first_departure
+                    + 2 * i * interval
+                    + timedelta(minutes=5),
+                ),
+                StopTime(
+                    scenario=scenario,
+                    station=stop_3,
+                    arrival_time=first_departure + 2 * i * interval + duration,
+                ),
+            ]
+            trips[-1].stop_times = stop_times
+
+            # backward
+            trips.append(
+                Trip(
+                    scenario=scenario,
+                    route=route_2,
+                    trip_type=TripType.PASSENGER,
+                    departure_time=first_departure + (2 * i + 1) * interval,
+                    arrival_time=first_departure + (2 * i + 1) * interval + duration,
+                    rotation=rotation,
+                )
+            )
+            stop_times = [
+                StopTime(
+                    scenario=scenario,
+                    station=stop_3,
+                    arrival_time=first_departure + (2 * i + 1) * interval,
+                ),
+                StopTime(
+                    scenario=scenario,
+                    station=stop_2,
+                    arrival_time=first_departure
+                    + (2 * i + 1) * interval
+                    + timedelta(minutes=5),
+                ),
+                StopTime(
+                    scenario=scenario,
+                    station=stop_1,
+                    arrival_time=first_departure + (2 * i + 1) * interval + duration,
+                ),
+            ]
+            trips[-1].stop_times = stop_times
+        session.add_all(trips)
+
+        # TODO: Add a depot
 
         session.commit()
         return scenario
@@ -378,3 +558,140 @@ class TestVehicleClass(TestGeneral):
         assert cloned_vehicle_class.vehicle_types == [cloned_vehicle_type]
         # Check the association table
         assert session.query(AssocVehicleTypeVehicleClass).count() == 1
+
+
+class TestEvent(TestGeneral):
+    def test_create_driving_event_simple(self, session, sample_content):
+        # Create a driving event on the first trip
+        event = Event(
+            scenario=session.query(Scenario).first(),
+            trip=session.query(Trip).first(),
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.DRIVING,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+        )
+        session.add(event)
+        session.commit()
+
+    def test_create_charging_opportunity(self, session, sample_content):
+        event = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+        )
+        session.add(event)
+        session.commit()
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    def test_create_invalid_event_type_combination(self, session, sample_content):
+        # At a station it can only be CHARGING_OPPORTUNITY
+        for event_type in (
+            EventType.DRIVING,
+            EventType.CHARGING_DEPOT,
+            EventType.SERVICE,
+            EventType.STANDBY_DEPARTURE,
+            EventType.PRECONDITIONING,
+        ):
+            event = Event(
+                scenario=session.query(Scenario).first(),
+                station=session.query(Station).first(),
+                subloc_no=1,
+                vehicle_type=session.query(VehicleType).first(),
+                event_type=event_type,
+                time_start=session.query(Trip).first().departure_time,
+                time_end=session.query(Trip).first().arrival_time,
+            )
+            session.add(event)
+            with pytest.raises(sqlalchemy.exc.IntegrityError):
+                session.commit()
+            session.rollback()
+
+        # At a trip it can only be DRIVING
+        for event_type in (
+            EventType.CHARGING_OPPORTUNITY,
+            EventType.CHARGING_DEPOT,
+            EventType.SERVICE,
+            EventType.STANDBY_DEPARTURE,
+            EventType.PRECONDITIONING,
+        ):
+            event = Event(
+                scenario=session.query(Scenario).first(),
+                trip=session.query(Trip).first(),
+                vehicle_type=session.query(VehicleType).first(),
+                event_type=event_type,
+                time_start=session.query(Trip).first().departure_time,
+                time_end=session.query(Trip).first().arrival_time,
+            )
+            session.add(event)
+            with pytest.raises(sqlalchemy.exc.IntegrityError):
+                session.commit()
+            session.rollback()
+
+        # TODO: Depot events are not implemented yet
+        raise NotImplementedError
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    def test_create_charging_depot(self, session, sample_content):
+        raise NotImplementedError
+
+    def test_create_overlapping_events_should_work(self, session, sample_content):
+        # Overlapping events for the same type are allowed, since that may very well be different vehicles
+        event_1 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+        )
+
+        event_2 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().arrival_time - timedelta(minutes=10),
+            time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+        )
+
+        session.add(event_1)
+        session.add(event_2)
+        session.commit()
+
+    def test_create_overlapping_events(self, session, sample_content):
+        # Overlapping events for the same type are allowed, since that may very well be different vehicles
+        event_1 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+        )
+
+        event_2 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().arrival_time - timedelta(minutes=10),
+            time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+        )
+
+        session.add(event_1)
+        session.add(event_2)
+
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            session.commit()
+        session.rollback()
