@@ -21,3 +21,7 @@ from eflips.model.network import VoltageLevel as VoltageLevel
 from eflips.model.network import Trip as Trip
 from eflips.model.network import StopTime as StopTime
 from eflips.model.network import TripType as TripType
+from eflips.model.depot import Depot as Depot
+from eflips.model.depot import Plan as Plan
+from eflips.model.depot import Area as Area
+from eflips.model.depot import AreaType as AreaType
