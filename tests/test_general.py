@@ -7,12 +7,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from eflips.model import (
+    Area,
+    AreaType,
     AssocRouteStation,
     Base,
     BatteryType,
+    Depot,
     Event,
     EventType,
     Line,
+    Plan,
+    Process,
     Rotation,
     Route,
     Scenario,
@@ -255,7 +260,54 @@ class TestGeneral:
             trips[-1].stop_times = stop_times
         session.add_all(trips)
 
-        # TODO: Add a depot
+        # Create a simple depot
+
+        depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
+        session.add(depot)
+
+        # Create plan
+
+        plan = Plan(scenario=scenario, name="Test Plan")
+        session.add(plan)
+
+        depot.default_plan = plan
+
+        # Create area
+        area = Area(
+            scenario=scenario,
+            name="Test Area",
+            depot=depot,
+            type=AreaType.LINE,
+            row_count=2,
+            capacity=6,
+        )
+        session.add(area)
+
+        area.vehicle_type = vehicle_type
+
+        # Create processes
+        clean = Process(
+            name="Clean",
+            scenario=scenario,
+            dispatchable=False,
+            duration=timedelta(minutes=30),
+        )
+
+        charging = Process(
+            name="Charging",
+            scenario=scenario,
+            dispatchable=False,
+            electric_power=150,
+        )
+
+        session.add(clean)
+        session.add(charging)
+
+        area.processes.append(clean)
+        area.processes.append(charging)
+
+        plan.processes.append(clean)
+        plan.processes.append(charging)
 
         session.commit()
         return scenario
@@ -587,7 +639,6 @@ class TestEvent(TestGeneral):
         session.add(event)
         session.commit()
 
-    @pytest.mark.skip(reason="Not implemented yet")
     def test_create_invalid_event_type_combination(self, session, sample_content):
         # At a station it can only be CHARGING_OPPORTUNITY
         for event_type in (
@@ -632,12 +683,44 @@ class TestEvent(TestGeneral):
                 session.commit()
             session.rollback()
 
-        # TODO: Depot events are not implemented yet
-        raise NotImplementedError
+        # At a depot's area it can only be CHARGING_DEPOT, SERVICE, STANDBY_DEPARTURE or PRECONDITIONING
+        for event_type in (
+            EventType.DRIVING,
+            EventType.CHARGING_OPPORTUNITY,
+        ):
+            event = Event(
+                scenario=session.query(Scenario).first(),
+                area=session.query(Area).first(),
+                vehicle_type=session.query(VehicleType).first(),
+                event_type=event_type,
+                time_start=session.query(Trip).first().departure_time,
+                time_end=session.query(Trip).first().arrival_time,
+            )
+            session.add(event)
+            with pytest.raises(sqlalchemy.exc.IntegrityError):
+                session.commit()
+            session.rollback()
 
-    @pytest.mark.skip(reason="Not implemented yet")
     def test_create_charging_depot(self, session, sample_content):
-        raise NotImplementedError
+        # Find the charging process
+        charging_process = (
+            session.query(Process)
+            .filter(Process.electric_power > 0)
+            .filter(Process.duration == None)
+            .first()
+        )
+
+        event = Event(
+            scenario=session.query(Scenario).first(),
+            area=charging_process.areas[0],
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.CHARGING_DEPOT,
+            subloc_no=1,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+        )
+        session.add(event)
+        session.commit()
 
     def test_create_overlapping_events_should_work(self, session, sample_content):
         # Overlapping events for the same type are allowed, since that may very well be different vehicles
