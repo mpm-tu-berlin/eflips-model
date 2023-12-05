@@ -22,6 +22,7 @@ from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, Session
 
 from eflips.model import Base
+from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
 
 if TYPE_CHECKING:
     from eflips.model import (
@@ -32,6 +33,10 @@ if TYPE_CHECKING:
         Trip,
         AssocRouteStation,
         Rotation,
+        Depot,
+        Plan,
+        Area,
+        Process,
     )
 
 
@@ -127,6 +132,25 @@ class Scenario(Base):
     events: Mapped[List["Event"]] = relationship(
         "Event", back_populates="scenario", cascade="all, delete"
     )
+    depots: Mapped[List["Depot"]] = relationship(
+        "Depot", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of depots."""
+
+    plans: Mapped[List["Plan"]] = relationship(
+        "Plan", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of plans."""
+
+    areas: Mapped[List["Area"]] = relationship(
+        "Area", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of areas."""
+
+    processes: Mapped[List["Process"]] = relationship(
+        "Process", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of processes."""
 
     @staticmethod
     def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> None:
@@ -227,6 +251,30 @@ class Scenario(Base):
                 self._copy_object(event, session, scenario_copy)
                 event_id_map[original_id] = event
 
+            depot_id_map: Dict[int, "Depot"] = {}
+            for depot in self.depots:
+                original_id = depot.id
+                self._copy_object(depot, session, scenario_copy)
+                depot_id_map[original_id] = depot
+
+            plan_id_map: Dict[int, "Plan"] = {}
+            for plan in self.plans:
+                original_id = plan.id
+                self._copy_object(plan, session, scenario_copy)
+                plan_id_map[original_id] = plan
+
+            area_id_map: Dict[int, "Area"] = {}
+            for area in self.areas:
+                original_id = area.id
+                self._copy_object(area, session, scenario_copy)
+                area_id_map[original_id] = area
+
+            process_id_map: Dict[int, "Process"] = {}
+            for process in self.processes:
+                original_id = process.id
+                self._copy_object(process, session, scenario_copy)
+                process_id_map[original_id] = process
+
         # This assigns the new ids
         session.flush()
 
@@ -313,6 +361,59 @@ class Scenario(Base):
         for event in scenario_copy.events:
             if event.vehicle_type_id is not None:
                 event.vehicle_type_id = vehicle_type_id_map[event.vehicle_type_id].id
+
+        # Depot <-> Plan
+        for depot in scenario_copy.depots:
+            depot.default_plan_id = plan_id_map[depot.default_plan_id].id
+
+        # Area <-> Depot, VehicleType
+        for area in scenario_copy.areas:
+            area.depot_id = depot_id_map[area.depot_id].id
+            area.vehicle_type_id = vehicle_type_id_map[area.vehicle_type_id].id
+
+        # Process <-> Area is a many-to-many relationship, so we need to update the association table
+        for area_process_entry in session.query(AssocAreaProcess):
+            if (
+                area_process_entry.area_id in area_id_map
+                and area_process_entry.process_id in process_id_map
+            ):
+                new_area_process_entry = AssocAreaProcess(
+                    area_id=area_id_map[area_process_entry.area_id].id,
+                    process_id=process_id_map[area_process_entry.process_id].id,
+                )
+                session.add(area_process_entry)
+            elif (
+                area_process_entry.area_id not in area_id_map
+                and area_process_entry.process_id in process_id_map
+            ):
+                pass
+            else:
+                raise ValueError(
+                    "There exists an association between an area and a process that is not in"
+                    " the scenario."
+                )
+
+        # Process <-> Plan is a many-to-many relationship, so we need to update the association table
+        for plan_process_entry in session.query(AssocPlanProcess):
+            if (
+                plan_process_entry.plan_id in plan_id_map
+                and plan_process_entry.process_id in process_id_map
+            ):
+                new_plan_process_entry = AssocPlanProcess(
+                    plan_id=plan_id_map[plan_process_entry.plan_id].id,
+                    process_id=process_id_map[plan_process_entry.process_id].id,
+                )
+                session.add(new_plan_process_entry)
+            elif (
+                plan_process_entry.plan_id not in plan_id_map
+                and plan_process_entry.process_id in process_id_map
+            ):
+                pass
+            else:
+                raise ValueError(
+                    "There exists an association between a plan and a process that is not in"
+                    " the scenario."
+                )
 
         session.flush()
         return scenario_copy
@@ -443,6 +544,9 @@ class VehicleType(Base):
 
     events: Mapped[List["Event"]] = relationship("Event", back_populates="vehicle_type")
     """A list of events."""
+
+    areas: Mapped[List["Area"]] = relationship("Area", back_populates="vehicle_type")
+    """A list of areas."""
 
     __table_args__ = tuple(_table_args_list)
 
@@ -629,13 +733,9 @@ class Event(Base):
     """The unique identifier of the station. Foreign key to :attr:`Station.id`."""
     station: Mapped["Station"] = relationship("Station", back_populates="events")
 
-    # TODO: Uncomment when Area is implemented
-    # area_id: Mapped[int] = mapped_column(
-    #    ForeignKey("Area.id"), nullable=True
-    # )
-    # """The unique identifier of the area in the depot. Foreign key to :attr:`Area.id`."""
-    # area: Mapped["Area"] = relationship(
-    #    "Area", back_populates="events")
+    area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"), nullable=True)
+    """The unique identifier of the area in the depot. Foreign key to :attr:`Area.id`."""
+    area: Mapped["Area"] = relationship("Area", back_populates="events")
 
     subloc_no: Mapped[int] = mapped_column(Integer, nullable=True)
     """
@@ -692,7 +792,7 @@ class Event(Base):
         # Also make sure the event type is valid for the nullable fields
         CheckConstraint(
             "(station_id IS NOT NULL AND subloc_no IS NOT NULL AND event_type IN ('CHARGING_OPPORTUNITY')) OR "
-            "(station_id IS NOT NULL AND subloc_no IS NULL AND event_type IN ('CHARGING_DEPOT', 'SERVICE', 'STANDBY_DEPARTURE', 'PRECONDITIONING')) OR "
+            "(area_id IS NOT NULL AND subloc_no IS NOT NULL AND event_type IN ('CHARGING_DEPOT', 'SERVICE', 'STANDBY_DEPARTURE', 'PRECONDITIONING')) OR "
             "(trip_id IS NOT NULL AND subloc_no IS NULL AND event_type IN ('DRIVING'))",
             name="filled_fields_type_combination",
         ),
