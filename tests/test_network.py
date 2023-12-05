@@ -33,14 +33,14 @@ class TestRoute(TestGeneral):
         """Create two stations for testing."""
         station_1 = Station(
             name="Hauptbahnhof",
-            geom="POINT(13.304398212525141 52.4995532470573)",
+            geom="POINT(13.304398212525141 52.4995532470573 0)",
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -307,7 +307,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -339,7 +339,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -453,7 +453,7 @@ class TestRoute(TestGeneral):
 
 class TestStation(TestGeneral):
     def test_create_station(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573 0)"
 
         # Create a simple station
         station = Station(
@@ -466,7 +466,7 @@ class TestStation(TestGeneral):
         session.commit()
 
     def test_create_station_invalid_electrification(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573 0)"
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             # Create a simple station
             station = Station(
@@ -505,7 +505,7 @@ class TestStation(TestGeneral):
         session.rollback()
 
     def test_create_station_complete(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573 0)"
 
         # Create a simple station
         station = Station(

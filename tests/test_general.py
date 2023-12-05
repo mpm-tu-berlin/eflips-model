@@ -105,7 +105,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0)",
+            geom="POINT(0 0 0)",
             is_electrified=False,
         )
         session.add(stop_1)
@@ -114,7 +114,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom="POINT(1 0)",
+            geom="POINT(1 0 0)",
             is_electrified=False,
         )
         session.add(stop_2)
@@ -123,7 +123,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom="POINT(2 0)",
+            geom="POINT(2 0 0)",
             is_electrified=False,
         )
 
