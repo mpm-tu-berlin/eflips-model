@@ -226,11 +226,17 @@ class ChargeType(PyEnum):
     charging stations.
     """
 
-    DEPOT = auto()
+    depb = auto()
     """Only charge when vehicle is not on a rotation"""
 
-    OPPORTUNITY = auto()
+    oppb = auto()
     """Aka „terminus charging“. While on a rotation, charge in the breaks between trips"""
+
+    DEPOT = depb
+    """Legacy value for depb"""
+
+    OPPORTUNITY = oppb
+    """Legacy value for oppb"""
 
 
 class Station(Base):
@@ -290,7 +296,7 @@ class Station(Base):
     """
     The type of charging infrastructure. If `is_electrified` is true, this must be set. 
     
-    When running simBA and eflips, this is set to `OPPORTUNITY` for all stations. `DEPOT` only makes sense in standalone
+    When running simBA and eflips, this is set to `oppb` for all stations. `depb` only makes sense in standalone
     simBA runs.
     """
 
