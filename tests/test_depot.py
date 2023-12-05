@@ -1,12 +1,7 @@
-import os
-
 import pytest
 import sqlalchemy
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
 
-from eflips.model import Depot, Plan, Area, VehicleType, AreaType, Process
-
+from eflips.model import Area, AreaType, Depot, Plan, Process, Scenario, VehicleType
 from tests.test_general import TestGeneral
 
 
@@ -177,6 +172,52 @@ class TestArea(TestDepot):
             area.vehicle_type = vehicle_type
             session.commit()
         session.rollback()
+
+    def test_copy_depot(self, depot_with_content, scenario, session):
+        session.add(depot_with_content)
+        session.commit()
+
+        # Clone the scenario
+        scenario_clone = scenario.clone(session)
+        session.add(scenario_clone)
+        session.commit()
+
+        # Load the depot
+        depot = (
+            session.query(Depot)
+            .join(Scenario)
+            .filter(Depot.scenario == scenario_clone)
+            .one()
+        )
+
+        assert depot.scenario == scenario_clone
+        assert depot.default_plan.scenario == scenario_clone
+
+        for area in depot.areas:
+            assert area.scenario == scenario_clone
+            assert area.vehicle_type.scenario == scenario_clone
+            assert area.depot == depot
+            for process in area.processes:
+                assert process.scenario == scenario_clone
+                for plan in process.plans:
+                    assert plan.scenario == scenario_clone
+
+        session.delete(scenario)
+        session.commit()
+
+        assert depot.scenario == scenario_clone
+        assert depot.default_plan.scenario == scenario_clone
+
+        for area in depot.areas:
+            assert area.scenario == scenario_clone
+            assert area.vehicle_type.scenario == scenario_clone
+            assert area.depot == depot
+            for process in area.processes:
+                assert process.scenario == scenario_clone
+                for plan in process.plans:
+                    assert plan.scenario == scenario_clone
+
+        breakpoint()
 
 
 class TestProcess(TestGeneral):
