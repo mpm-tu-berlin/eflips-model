@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from enum import auto, Enum as PyEnum
 from typing import Any, Dict, List, TYPE_CHECKING, Union
@@ -14,6 +15,7 @@ from sqlalchemy import (
     func,
     Integer,
     Text,
+    UUID,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
@@ -71,6 +73,10 @@ class Scenario(Base):
         postgresql.JSONB, nullable=True
     )
     """The options for the eflips-depot simulation. Stored as a JSON object."""
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=True, unique=True
+    )
+    """The task id of the simulation. Automatically set to a UUID when a scenario is submitted for simulation."""
 
     # Most of the other columns (all except the Assoc-Tables for many-to-many relationships) have the scenario_id
     # as a foreign key. They are mapped below.
