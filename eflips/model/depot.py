@@ -19,7 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, VehicleType
+    from eflips.model import Scenario, VehicleType, Event
 
 
 class Depot(Base):
