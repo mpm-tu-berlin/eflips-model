@@ -570,6 +570,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.DRIVING,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
         session.add(event)
         session.commit()
@@ -583,6 +585,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
         session.add(event)
         session.commit()
@@ -605,6 +609,8 @@ class TestEvent(TestGeneral):
                 event_type=event_type,
                 time_start=session.query(Trip).first().departure_time,
                 time_end=session.query(Trip).first().arrival_time,
+                soc_start=0.5,
+                soc_end=0.5,
             )
             session.add(event)
             with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -626,6 +632,8 @@ class TestEvent(TestGeneral):
                 event_type=event_type,
                 time_start=session.query(Trip).first().departure_time,
                 time_end=session.query(Trip).first().arrival_time,
+                soc_start=0.5,
+                soc_end=0.5,
             )
             session.add(event)
             with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -649,6 +657,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         event_2 = Event(
@@ -659,6 +669,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().arrival_time - timedelta(minutes=10),
             time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         session.add(event_1)
@@ -676,6 +688,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         event_2 = Event(
@@ -687,6 +701,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().arrival_time - timedelta(minutes=10),
             time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         session.add(event_1)

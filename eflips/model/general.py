@@ -640,15 +640,15 @@ class Event(Base):
     )
     """The time the event starts."""
 
-    time_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    time_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     """The time the event ends."""
 
-    soc_start: Mapped[float] = mapped_column(Float, nullable=True)
+    soc_start: Mapped[float] = mapped_column(Float, nullable=False)
     """
     The state of charge at the start of the event. This should refer to the net battery capacity.
     """
 
-    soc_end: Mapped[float] = mapped_column(Float, nullable=True)
+    soc_end: Mapped[float] = mapped_column(Float, nullable=False)
     """The state of charge at the end of the event. This should refer to the net battery capacity."""
 
     event_type: Mapped[EventType] = mapped_column(SqlEnum(EventType), nullable=False)
