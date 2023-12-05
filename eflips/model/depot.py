@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, TYPE_CHECKING, Tuple
 from enum import Enum as PyEnum, auto
 
@@ -126,7 +127,7 @@ class Area(Base):
         "(type = 'LINE' AND row_count > 0) OR"
         "(type = 'DIRECT_TWOSIDE' AND row_count IS NULL) OR"
         "(type = 'DIRECT_ONESIDE' AND row_count IS NULL)",
-    name="row_count_check"
+        name="row_count_check",
     )
     _table_args_list.append(row_count_constraint)
 
@@ -178,7 +179,9 @@ class Process(Base):
     """The peak electric power required by this process in kW. Actual power consumption might be lower. It implies the 
     charging equipment to be provided."""
 
-    availability: Mapped[List[Tuple]] = mapped_column(postgresql.JSONB, nullable=True)
+    availability: Mapped[List[Tuple[datetime, datetime]]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
     """Temporal availability of this process represented by a list of start and end times. Null means this process is 
     always available."""
 

@@ -19,7 +19,7 @@ from eflips.model import Base
 
 if TYPE_CHECKING:
     from eflips.model import Route, Line, Station, StopTime, Trip
-    from eflips.model import Depot, Plan, Area
+    from eflips.model import Depot, Plan, Area, Process
 
 
 class Scenario(Base):
@@ -101,21 +101,24 @@ class Scenario(Base):
     )
     """A list of trips."""
     depots: Mapped[List["Depot"]] = relationship(
-        "Depot", back_populates="scenario", cascade="all, delete")
+        "Depot", back_populates="scenario", cascade="all, delete"
+    )
     """A list of depots."""
 
     plans: Mapped[List["Plan"]] = relationship(
-        "Plan", back_populates="scenario", cascade="all, delete")
+        "Plan", back_populates="scenario", cascade="all, delete"
+    )
     """A list of plans."""
 
     areas: Mapped[List["Area"]] = relationship(
-        "Area", back_populates="scenario", cascade="all, delete")
+        "Area", back_populates="scenario", cascade="all, delete"
+    )
     """A list of areas."""
 
     processes: Mapped[List["Process"]] = relationship(
-        "Process", back_populates="scenario", cascade="all, delete")
+        "Process", back_populates="scenario", cascade="all, delete"
+    )
     """A list of processes."""
-
 
     @staticmethod
     def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> None:
@@ -374,9 +377,7 @@ class VehicleType(Base):
         back_populates="vehicle_types",
     )
 
-    area: Mapped["Area"] = relationship(
-        "Area",
-        back_populates="vehicle_type")
+    area: Mapped["Area"] = relationship("Area", back_populates="vehicle_type")
 
     __table_args__ = tuple(_table_args_list)
 
