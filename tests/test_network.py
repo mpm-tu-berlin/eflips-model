@@ -1,21 +1,21 @@
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 
 import pytest
 import sqlalchemy
 from sqlalchemy import func
 
 from eflips.model import (
+    AssocRouteStation,
     ChargeType,
     Line,
+    Rotation,
     Route,
     Station,
-    VoltageLevel,
-    AssocRouteStation,
-    VehicleType,
-    Rotation,
+    StopTime,
     Trip,
     TripType,
-    StopTime,
+    VehicleType,
+    VoltageLevel,
 )
 from test_general import TestGeneral
 
@@ -91,7 +91,7 @@ class TestRoute(TestGeneral):
         session.commit()
 
         # Create a shape
-        shape = "LINESTRING(13.304398212525141 52.4995532470573,13.328859958740962 52.50315841433728)"
+        shape = "LINESTRINGZ(13.304398212525141 52.4995532470573 0,13.328859958740962 52.50315841433728 0)"
 
         route = Route(
             name="1 Hauptbahnhof -> Hauptfriedhof",
@@ -101,13 +101,13 @@ class TestRoute(TestGeneral):
             arrival_station=stations[1],
             line=line,
             distance=0,
-            shape=shape,
+            geom=shape,
             scenario=scenario,
         )
         session.add(route)
 
         # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.shape, True).select())
+        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
         session.commit()
 
     def test_create_route_invalid_distance(self, session, scenario, stations):
@@ -138,7 +138,7 @@ class TestRoute(TestGeneral):
 
     def test_route_invalid_distance(self, session, scenario, stations):
         # Create a shape
-        shape = "LINESTRING(13.304398212525141 52.4995532470573,13.328859958740962 52.50315841433728)"
+        shape = "LINESTRINGZ(13.304398212525141 52.4995532470573 0,13.328859958740962 52.50315841433728 0)"
 
         route = Route(
             scenario=scenario,
@@ -146,7 +146,7 @@ class TestRoute(TestGeneral):
             arrival_station=stations[1],
             name="1 Hauptbahnhof -> Hauptfriedhof",
             distance=100,
-            shape=shape,
+            geom=shape,
         )
 
         with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -155,7 +155,7 @@ class TestRoute(TestGeneral):
         session.rollback()
 
         # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.shape, True).select())
+        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
         session.add(route)
         session.commit()
 

@@ -101,8 +101,8 @@ class Route(Base):
     distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The length of the route in meters."""
 
-    shape: Mapped[Geometry] = mapped_column(
-        Geometry("LINESTRING", srid=4326), nullable=True
+    geom: Mapped[Geometry] = mapped_column(
+        Geometry("LINESTRINGZ", srid=4326), nullable=True
     )
     """
     The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
@@ -128,7 +128,7 @@ class Route(Base):
     __table_args__ = (
         CheckConstraint("distance > 0", name="route_distance_positive_check"),
         CheckConstraint(
-            "shape IS NULL OR ST_Length(shape, True) = distance",
+            "geom IS NULL OR ST_Length(geom, True) = distance",
             name="route_shape_distance_check",
         ),
     )
