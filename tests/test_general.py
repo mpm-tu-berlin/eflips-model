@@ -724,6 +724,8 @@ class TestEvent(TestGeneral):
             vehicle_type=session.query(VehicleType).first(),
             event_type=EventType.CHARGING_DEPOT,
             subloc_no=1,
+            soc_start=0.5,
+            soc_end=0.5,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
         )
