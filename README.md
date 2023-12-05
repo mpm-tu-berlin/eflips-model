@@ -23,7 +23,10 @@ Releases of the package will be made available on [https://pypi.org/](https://py
 - minor releases (e.g. `1.0.0` to `1.1.0`) are backwards compatible feature additions, with the schema changes being optional
 - major releases (e.g. `1.0.0` to `2.0.0`) are backwards incompatible changes, with the schema changes being mandatory
 
-Supported databadse backends are [PostgreSQL](https://www.postgresql.org) with the [PostGIS](https://postgis.net/) extension and [SQLite](https://www.sqlite.org/index.html) with the [SpatiaLite](https://www.gaia-gis.it/fossil/libspatialite/index) extension.
+Supported database backends are
+
+- [PostgreSQL](https://www.postgresql.org) with the [PostGIS](https://postgis.net/) extension
+  and `btree_gist` (`CREATE EXTENSION btree_gist;`)
 
 ### Usage
 

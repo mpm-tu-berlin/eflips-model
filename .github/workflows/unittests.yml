@@ -33,12 +33,9 @@ jobs:
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out code
         uses: actions/checkout@v4
-
-      - name: Set Up Gdal
+      - name: Enable btree_gist postgre extension
         run: |
-          sudo apt update
-          sudo apt install gdal-bin
-
+          psql postgres://user:password@localhost/database -c "CREATE EXTENSION btree_gist;"
       - name: Set up Python ${{ matrix.PYTHON_VERSION }}
         uses: actions/setup-python@v4
         with:
