@@ -356,7 +356,9 @@ class VehicleType(Base):
     battery_capacity_constraint = CheckConstraint("battery_capacity > 0")
     _table_args_list.append(battery_capacity_constraint)
 
-    battery_capacity_reserve: Mapped[float] = mapped_column(Float, nullable=True)
+    battery_capacity_reserve: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="0.0"
+    )
     """The battery capacity reserve below 0 kWh 'capacity' in kWh. Using this value in generating evaluation, 
     things such as "always 10% reserve" can be modeled."""
     battery_capacity_reserve_constraint = CheckConstraint(
@@ -365,7 +367,7 @@ class VehicleType(Base):
     _table_args_list.append(battery_capacity_reserve_constraint)
 
     charging_curve: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Integer, dimensions=2)
+        postgresql.ARRAY(Float, dimensions=2)
     )
     """
     The charging curve of the vehicle type. This is a 2D array of floats with two rows. The first row contains
@@ -375,7 +377,7 @@ class VehicleType(Base):
     """
 
     v2g_curve: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Integer, dimensions=2), nullable=True
+        postgresql.ARRAY(Float, dimensions=2), nullable=True
     )
     """
     The vehicle-to-grid curve of the vehicle type. This is a 2D array of floats with two rows. The first row contains
@@ -391,7 +393,7 @@ class VehicleType(Base):
     charging_efficiency_constraint_upper = CheckConstraint("charging_efficiency <= 1")
     _table_args_list.append(charging_efficiency_constraint_upper)
 
-    opportunity_charge_capable: Mapped[bool] = mapped_column(Boolean)
+    opportunity_charging_capable: Mapped[bool] = mapped_column(Boolean)
     """
     Whether the bus is capable of automatic highpower charging. All buses are assumed to be capable of (depot) 
     conductive charging.
@@ -404,17 +406,23 @@ class VehicleType(Base):
 
     # Shape is a three-entry array of floats, representing the length, width, and height of the vehicle in meters.
     shape: Mapped[List[float]] = mapped_column(
-        postgresql.ARRAY(Integer, dimensions=1, as_tuple=True), nullable=True
+        postgresql.ARRAY(Float, dimensions=1, as_tuple=True), nullable=True
     )
     """
     The shape of the vehicle. This is a 1D array of floats with three entries, representing the length, width, and
     height of the vehicle in meters.
     """
 
-    empty_mass: Mapped[float] = mapped_column(Float, nullable=True)
+    empty_mass_kg: Mapped[float] = mapped_column(Float, nullable=True)
     """The empty mass of the vehicle in kg."""
-    empty_mass_constraint = CheckConstraint("empty_mass > 0")
-    _table_args_list.append(empty_mass_constraint)
+    empty_mass_kg_constraint = CheckConstraint("empty_mass_kg > 0")
+    _table_args_list.append(empty_mass_kg_constraint)
+
+    consumption: Mapped[float] = mapped_column(Float, nullable=True)
+    """
+    The vehicle's energy consumption in kWh/km. This is used to calculate the energy consumption of a trip. Can
+    be None if we are using more detailed consumption models.
+    """
 
     vehicles: Mapped[List["Vehicle"]] = relationship(
         "Vehicle", back_populates="vehicle_type"
