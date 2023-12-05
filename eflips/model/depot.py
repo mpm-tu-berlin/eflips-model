@@ -31,15 +31,15 @@ class Depot(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     """The unique idenfitier of the depot. Auto-incremented."""
 
-    name: Mapped[str] = mapped_column(Text)
-    """A name for the depot."""
-    name_short: Mapped[str] = mapped_column(Text, nullable=True)
-    """An optional short name for the depot."""
-
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
     """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
     scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="depots")
     """The scenario this depot belongs to."""
+
+    name: Mapped[str] = mapped_column(Text)
+    """A name for the depot."""
+    name_short: Mapped[str] = mapped_column(Text, nullable=True)
+    """An optional short name for the depot."""
 
     default_plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"))
     """The default plan of this depot. Foreign key to :attr:`Plan.id`."""
