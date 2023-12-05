@@ -4,15 +4,15 @@ import pytest
 import sqlalchemy
 
 from eflips.model import (
+    AssocRouteStation,
     Line,
+    Rotation,
     Route,
     Station,
+    StopTime,
     Trip,
     TripType,
-    StopTime,
-    Rotation,
     VehicleType,
-    AssocRouteStation,
 )
 from test_general import TestGeneral
 
@@ -71,10 +71,22 @@ class TestTripAndStopTime(TestGeneral):
             rotation=rotation,
             trip_type=TripType.PASSENGER,
             departure_time=datetime(
-                year=2020, month=1, day=1, hour=12, minute=0, second=0
+                year=2020,
+                month=1,
+                day=1,
+                hour=12,
+                minute=0,
+                second=0,
+                tzinfo=timezone.utc,
             ),
             arrival_time=datetime(
-                year=2020, month=1, day=1, hour=12, minute=10, second=0
+                year=2020,
+                month=1,
+                day=1,
+                hour=12,
+                minute=10,
+                second=0,
+                tzinfo=timezone.utc,
             ),
         )
         return trip
