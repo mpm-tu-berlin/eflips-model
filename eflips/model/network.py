@@ -381,4 +381,4 @@ class AssocRouteStation(Base):
     """An optional precise location of the this route's stop at the station. Use WGS84 coordinates (EPSG:4326)."""
 
     elapsed_distance: Mapped[float] = mapped_column(Float, nullable=False)
-    """The distance that the bus has traveled at this stop time."""
+    """The distance in m that the bus has traveled when it reached this stop."""
