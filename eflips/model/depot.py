@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
 from typing import List, Tuple, TYPE_CHECKING
 
@@ -10,6 +10,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Interval,
     Text,
 )
 from sqlalchemy.dialects import postgresql
@@ -171,9 +172,8 @@ class Process(Base):
     dispatchable: Mapped[bool] = mapped_column(Boolean)
     """Whether the bus is ready for departure."""
 
-    duration: Mapped[float] = mapped_column(Float, nullable=True)
+    duration: Mapped[timedelta] = mapped_column(Interval, nullable=True)
     """The duration of this process in seconds."""
-    # TODO in eflips-api it was an integer. Do we do conversions in eflips-api or we can use integer here?
 
     electric_power: Mapped[float] = mapped_column(Float, nullable=True)
     """The peak electric power required by this process in kW. Actual power consumption might be lower. It implies the 
@@ -200,7 +200,7 @@ class Process(Base):
     __table_args__ = (
         CheckConstraint(
             "(duration IS NULL) OR"
-            "(duration IS NOT NULL AND duration >= 0) OR"
+            "(duration IS NOT NULL AND duration >= '00:00:00') OR"
             "(electric_power IS NULL) OR"
             "(electric_power IS NOT NULL AND electric_power >= 0)",
             name="positive_duration_and_power_check",

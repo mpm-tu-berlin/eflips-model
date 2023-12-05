@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 import sqlalchemy
 
@@ -46,7 +48,7 @@ class TestDepot(TestGeneral):
             name="Clean",
             scenario=scenario,
             dispatchable=False,
-            duration=1800,
+            duration=timedelta(minutes=30),
         )
 
         charging = Process(
@@ -227,7 +229,7 @@ class TestProcess(TestGeneral):
             name="Test Process",
             scenario=scenario,
             dispatchable=False,
-            duration=1800,
+            duration=timedelta(minutes=30),
             electric_power=150,
         )
 
@@ -238,7 +240,7 @@ class TestProcess(TestGeneral):
             name="Test Process",
             scenario=scenario,
             dispatchable=False,
-            duration=1800,
+            duration=timedelta(minutes=30),
         )
 
         session.add(process)
@@ -259,7 +261,7 @@ class TestProcess(TestGeneral):
                 name="Test Process",
                 scenario=scenario,
                 dispatchable=False,
-                duration=-1800,
+                duration=timedelta(minutes=-30),
                 electric_power=-150,
             )
             session.add(process)
@@ -271,7 +273,7 @@ class TestProcess(TestGeneral):
             name="Test Process",
             scenario=scenario,
             dispatchable=False,
-            duration=1800,
+            duration=timedelta(minutes=30),
         )
 
         session.add(process)
