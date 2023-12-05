@@ -450,7 +450,7 @@ class BatteryType(Base):
         "VehicleType", back_populates="battery_type"
     )
 
-    specific_mass: Mapped[float] = mapped_column(Float)
+    specific_mass_kg_per_kwh: Mapped[float] = mapped_column(Float)
     """The specific mass of the battery in kg/kWh. Relative to gross (not net) capacity."""
 
     chemistry: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSONB)

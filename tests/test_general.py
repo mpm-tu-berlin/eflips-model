@@ -62,7 +62,7 @@ class TestGeneral:
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass_kg_per_kwh=100, chemistry={"test": "test"}
         )
         session.add(battery_type)
         vehicle_type.battery_type = battery_type
@@ -366,7 +366,7 @@ class TestVehicleType(TestGeneral):
 
         # Create one with all fields
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass_kg_per_kwh=100, chemistry={"test": "test"}
         )
         vehicle_type = VehicleType(
             name="Test Vehicle Type",
@@ -476,7 +476,7 @@ class TestVehicleType(TestGeneral):
 class TestBatteryType(TestGeneral):
     def test_create_battery_type(self, session, scenario):
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass_kg_per_kwh=100, chemistry={"test": "test"}
         )
         session.add(battery_type)
         session.commit()
