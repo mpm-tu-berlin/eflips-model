@@ -219,8 +219,6 @@ class TestArea(TestDepot):
                 for plan in process.plans:
                     assert plan.scenario == scenario_clone
 
-        breakpoint()
-
 
 class TestProcess(TestGeneral):
     def test_create_process(self, session, scenario):

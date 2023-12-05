@@ -146,6 +146,9 @@ class Area(Base):
         "Process", secondary="AssocAreaProcess", back_populates="areas"
     )
 
+    events: Mapped[List["Event"]] = relationship("Event", back_populates="area")
+    """The events that happened in this area."""
+
     _table_args_list.append(capacity_constraint)
 
     __table_args__ = tuple(_table_args_list)

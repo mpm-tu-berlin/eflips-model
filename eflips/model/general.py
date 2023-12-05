@@ -721,13 +721,9 @@ class Event(Base):
     """The unique identifier of the station. Foreign key to :attr:`Station.id`."""
     station: Mapped["Station"] = relationship("Station", back_populates="events")
 
-    # TODO: Uncomment when Area is implemented
-    # area_id: Mapped[int] = mapped_column(
-    #    ForeignKey("Area.id"), nullable=True
-    # )
-    # """The unique identifier of the area in the depot. Foreign key to :attr:`Area.id`."""
-    # area: Mapped["Area"] = relationship(
-    #    "Area", back_populates="events")
+    area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"), nullable=True)
+    """The unique identifier of the area in the depot. Foreign key to :attr:`Area.id`."""
+    area: Mapped["Area"] = relationship("Area", back_populates="events")
 
     subloc_no: Mapped[int] = mapped_column(Integer, nullable=True)
     """
@@ -784,7 +780,7 @@ class Event(Base):
         # Also make sure the event type is valid for the nullable fields
         CheckConstraint(
             "(station_id IS NOT NULL AND subloc_no IS NOT NULL AND event_type IN ('CHARGING_OPPORTUNITY')) OR "
-            "(station_id IS NOT NULL AND subloc_no IS NULL AND event_type IN ('CHARGING_DEPOT', 'SERVICE', 'STANDBY_DEPARTURE', 'PRECONDITIONING')) OR "
+            "(area_id IS NOT NULL AND subloc_no IS NOT NULL AND event_type IN ('CHARGING_DEPOT', 'SERVICE', 'STANDBY_DEPARTURE', 'PRECONDITIONING')) OR "
             "(trip_id IS NOT NULL AND subloc_no IS NULL AND event_type IN ('DRIVING'))",
             name="filled_fields_type_combination",
         ),
