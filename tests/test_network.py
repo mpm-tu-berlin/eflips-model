@@ -33,14 +33,14 @@ class TestRoute(TestGeneral):
         """Create two stations for testing."""
         station_1 = Station(
             name="Hauptbahnhof",
-            location="POINT(13.304398212525141 52.4995532470573)",
+            geom="POINT(13.304398212525141 52.4995532470573)",
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -307,7 +307,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -339,7 +339,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -453,12 +453,12 @@ class TestRoute(TestGeneral):
 
 class TestStation(TestGeneral):
     def test_create_station(self, session, scenario):
-        location = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573)"
 
         # Create a simple station
         station = Station(
             name="Hauptbahnhof",
-            location=location,
+            geom=geom,
             scenario=scenario,
             is_electrified=False,
         )
@@ -466,12 +466,12 @@ class TestStation(TestGeneral):
         session.commit()
 
     def test_create_station_invalid_electrification(self, session, scenario):
-        location = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573)"
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                location=location,
+                geom=geom,
                 scenario=scenario,
                 is_electrified=True,
             )
@@ -482,7 +482,7 @@ class TestStation(TestGeneral):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                location=location,
+                geom=geom,
                 scenario=scenario,
                 is_electrified=False,
                 power_total=100,
@@ -495,7 +495,7 @@ class TestStation(TestGeneral):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                location=".jkdfaghjkl",
+                geom=".jkdfaghjkl",
                 scenario=scenario,
                 is_electrified=False,
                 power_total=100,
@@ -505,15 +505,15 @@ class TestStation(TestGeneral):
         session.rollback()
 
     def test_create_station_complete(self, session, scenario):
-        location = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573)"
 
         # Create a simple station
         station = Station(
             name="Hauptbahnhof",
-            location=location,
+            geom=geom,
             scenario=scenario,
             is_electrified=True,
-            amount_charging_poles=2,
+            amount_charging_places=2,
             power_per_charger=22,
             power_total=44,
             charge_type=ChargeType.DEPOT,

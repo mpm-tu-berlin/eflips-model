@@ -25,7 +25,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_1 = Station(
             name="Hauptbahnhof",
-            location="POINT(13.304398212525141 52.4995532470573)",
+            geom="POINT(13.304398212525141 52.4995532470573)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -33,7 +33,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_2 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -130,7 +130,7 @@ class TestTripAndStopTime(TestGeneral):
 
         intermediate_station = Station(
             name="Zwischenstation",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -248,7 +248,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -281,7 +281,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -392,7 +392,7 @@ class TestTripAndStopTime(TestGeneral):
             stations.append(
                 Station(
                     name=f"Station {i}",
-                    location=f"POINT({i} {i})",
+                    geom=f"POINT({i} {i})",
                     scenario=trip.scenario,
                     is_electrified=False,
                 )
@@ -440,14 +440,14 @@ class TestRotation(TestGeneral):
     def trips(self, session, scenario):
         station_1 = Station(
             name="Hauptbahnhof",
-            location="POINT(13.304398212525141 52.4995532470573)",
+            geom="POINT(13.304398212525141 52.4995532470573)",
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728)",
             scenario=scenario,
             is_electrified=False,
         )

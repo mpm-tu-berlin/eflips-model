@@ -10,6 +10,7 @@ from sqlalchemy import (
     event,
     Float,
     ForeignKey,
+    Integer,
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -203,11 +204,20 @@ class VoltageLevel(PyEnum):
     The voltage level of a charging infrastructure. Used in analysis and simulation to determine grid load.
     """
 
-    LV = auto()
-    """Low voltage, e.g. 400V three- phase"""
+    HV = auto()
+    """High Voltage, e.g. 110kV transmission grid"""
+
+    HV_MV = auto()
+    """Both high and medium voltage"""
 
     MV = auto()
     """Medium Voltage, e.g. 10kV distribution grid"""
+
+    MV_LV = auto()
+    """Both medium and low voltage"""
+
+    LV = auto()
+    """Low voltage, e.g. 400V three- phase"""
 
 
 class ChargeType(PyEnum):
@@ -245,23 +255,21 @@ class Station(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """The short name of the station (if available)."""
 
-    location: Mapped[Geometry] = mapped_column(
-        Geometry("POINT", srid=4326), nullable=False
-    )
+    geom: Mapped[Geometry] = mapped_column(Geometry("POINT", srid=4326), nullable=False)
     """The location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
 
     is_electrified = mapped_column(Boolean, nullable=False)
     """
     Whether the station has a charging infrastructure. If yes, then
     
-    - `amount_charging_poles` must be set
+    - `amount_charging_places` must be set
     - `power_per_charger` must be set
     - `power_total` must be set
     - `charge_type` must be set
     - `voltage_level` must be set
     """
 
-    amount_charging_poles = mapped_column(BigInteger, nullable=True)
+    amount_charging_places = mapped_column(Integer, nullable=True)
     """
     The amount of charging poles at the station. If `is_electrified` is true, this must be set.
     """
@@ -323,12 +331,12 @@ class Station(Base):
     # Create a check constraint to ensure that the charging infrastructure is only set if the station is electrified.
     __table_args__ = (
         CheckConstraint(
-            "is_electrified=TRUE AND (amount_charging_poles "
+            "is_electrified=TRUE AND (amount_charging_places "
             "IS NOT NULL AND power_per_charger IS NOT NULL "
             "AND power_total IS NOT NULL "
             "AND charge_type IS NOT NULL "
             "AND voltage_level IS NOT NULL) OR "
-            "is_electrified=FALSE AND (amount_charging_poles "
+            "is_electrified=FALSE AND (amount_charging_places "
             "IS NULL AND power_per_charger IS NULL "
             "AND power_total IS NULL "
             "AND charge_type IS NULL "
