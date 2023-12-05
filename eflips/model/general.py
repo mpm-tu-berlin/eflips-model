@@ -543,15 +543,13 @@ class AssocVehicleTypeVehicleClass(Base):
     """
 
     __tablename__ = "AssocVehicleTypeVehicleClass"
+    id = mapped_column(BigInteger, primary_key=True)
+    """Not the primary key and not used in SQLAlchemy, but required by Django."""
 
-    vehicle_type_id: Mapped[int] = mapped_column(
-        ForeignKey("VehicleType.id"), primary_key=True
-    )
+    vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
 
-    vehicle_class_id: Mapped[int] = mapped_column(
-        ForeignKey("VehicleClass.id"), primary_key=True
-    )
+    vehicle_class_id: Mapped[int] = mapped_column(ForeignKey("VehicleClass.id"))
     """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
 
 
