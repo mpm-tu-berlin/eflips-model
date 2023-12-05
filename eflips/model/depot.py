@@ -1,16 +1,16 @@
 from datetime import datetime
-from typing import List, TYPE_CHECKING, Tuple
-from enum import Enum as PyEnum, auto
+from enum import auto, Enum as PyEnum
+from typing import List, Tuple, TYPE_CHECKING
 
 from sqlalchemy import (
-    Integer,
-    ForeignKey,
-    Text,
-    Enum as SqlEnum,
     BigInteger,
-    CheckConstraint,
     Boolean,
+    CheckConstraint,
+    Enum as SqlEnum,
     Float,
+    ForeignKey,
+    Integer,
+    Text,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -114,7 +114,7 @@ class Area(Base):
     vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
     vehicle_type: Mapped["VehicleType"] = relationship(
-        "VehicleType", back_populates="area"
+        "VehicleType", back_populates="areas"
     )
     """The vehicle type which can park in this area."""
 
