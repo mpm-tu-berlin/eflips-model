@@ -57,7 +57,7 @@ class Plan(Base):
 
     __tablename__ = "Plan"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the plan. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -216,10 +216,13 @@ class AssocPlanProcess(Base):
 
     __tablename__ = "AssocPlanProcess"
 
-    plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"), primary_key=True)
+    id = mapped_column(BigInteger, primary_key=True)
+    """The unique identifier of the association. Auto-incremented. Needed for django."""
+
+    plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"))
     """The unique identifier of the plan. Foreign key to :attr:`Plan.id`."""
 
-    process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"), primary_key=True)
+    process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"))
     """The unique identifier of the process. Foreign key to :attr:`Process.id`."""
 
 
@@ -228,8 +231,11 @@ class AssocAreaProcess(Base):
 
     __tablename__ = "AssocAreaProcess"
 
-    area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"), primary_key=True)
+    id = mapped_column(BigInteger, primary_key=True)
+    """The unique identifier of the association. Auto-incremented. Needed for django."""
+
+    area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"))
     """The unique identifier of the area. Foreign key to :attr:`Area.id`."""
 
-    process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"), primary_key=True)
+    process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"))
     """The unique identifier of the process. Foreign key to :attr:`Process.id`."""
