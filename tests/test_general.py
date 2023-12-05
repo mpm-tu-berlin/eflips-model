@@ -277,7 +277,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Area",
             depot=depot,
-            type=AreaType.LINE,
+            area_type=AreaType.LINE,
             row_count=2,
             capacity=6,
         )

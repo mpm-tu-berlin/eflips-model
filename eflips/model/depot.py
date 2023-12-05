@@ -29,7 +29,7 @@ class Depot(Base):
     """
 
     __tablename__ = "Depot"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique idenfitier of the depot. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -97,7 +97,7 @@ class Area(Base):
 
     _table_args_list = []
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the area. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -119,26 +119,26 @@ class Area(Base):
     )
     """The vehicle type which can park in this area."""
 
-    type = mapped_column(SqlEnum(AreaType))
+    area_type = mapped_column(SqlEnum(AreaType))
     """The type of the area. See :class:`depot.AreaType`."""
 
-    row_count: Mapped[int] = mapped_column(BigInteger, nullable=True)
+    row_count: Mapped[int] = mapped_column(Integer, nullable=True)
 
     row_count_constraint = CheckConstraint(
-        "(type = 'LINE' AND row_count > 0) OR"
-        "(type = 'DIRECT_TWOSIDE' AND row_count IS NULL) OR"
-        "(type = 'DIRECT_ONESIDE' AND row_count IS NULL)",
+        "(area_type = 'LINE' AND row_count > 0) OR"
+        "(area_type = 'DIRECT_TWOSIDE' AND row_count IS NULL) OR"
+        "(area_type = 'DIRECT_ONESIDE' AND row_count IS NULL)",
         name="row_count_check",
     )
     _table_args_list.append(row_count_constraint)
 
-    capacity: Mapped[int] = mapped_column(BigInteger)
+    capacity: Mapped[int] = mapped_column(Integer)
 
     capacity_constraint = CheckConstraint(
         "capacity > 0 AND "
-        "((type = 'DIRECT_TWOSIDE' AND capacity % 2 = 0) "
-        "OR (type = 'DIRECT_ONESIDE') "
-        "OR (type = 'LINE' AND capacity % row_count = 0))",
+        "((area_type = 'DIRECT_TWOSIDE' AND capacity % 2 = 0) "
+        "OR (area_type = 'DIRECT_ONESIDE') "
+        "OR (area_type = 'LINE' AND capacity % row_count = 0))",
         name="capacity_validity_check",
     )
 

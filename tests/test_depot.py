@@ -27,7 +27,7 @@ class TestDepot(TestGeneral):
             scenario=scenario,
             name="Test Area",
             depot=depot,
-            type=AreaType.LINE,
+            area_type=AreaType.LINE,
             row_count=2,
             capacity=6,
         )
@@ -93,7 +93,7 @@ class TestArea(TestDepot):
             scenario=scenario,
             depot=depot_with_content,
             name="line area",
-            type=AreaType.LINE,
+            area_type=AreaType.LINE,
             row_count=2,
             capacity=6,
         )
@@ -105,7 +105,7 @@ class TestArea(TestDepot):
             scenario=scenario,
             depot=depot_with_content,
             name="direct two side Area",
-            type=AreaType.DIRECT_TWOSIDE,
+            area_type=AreaType.DIRECT_TWOSIDE,
             capacity=4,
         )
         direct_twoside_area.vehicle_type = vehicle_type
@@ -115,7 +115,7 @@ class TestArea(TestDepot):
             scenario=scenario,
             depot=depot_with_content,
             name="direct one side",
-            type=AreaType.DIRECT_ONESIDE,
+            area_type=AreaType.DIRECT_ONESIDE,
             capacity=7,
         )
         direct_oneside_area.vehicle_type = vehicle_type
@@ -138,7 +138,7 @@ class TestArea(TestDepot):
                 scenario=scenario,
                 name="Test Area 1",
                 depot=depot_with_content,
-                type=AreaType.LINE,
+                area_type=AreaType.LINE,
                 row_count=2,
                 capacity=5,
             )
@@ -153,7 +153,7 @@ class TestArea(TestDepot):
                 scenario=scenario,
                 name="Test Area 2",
                 depot=depot_with_content,
-                type=AreaType.DIRECT_ONESIDE,
+                area_type=AreaType.DIRECT_ONESIDE,
                 capacity=-5,
             )
             session.add(area)
@@ -167,7 +167,7 @@ class TestArea(TestDepot):
                 scenario=scenario,
                 name="Test Area 3",
                 depot=depot_with_content,
-                type=AreaType.DIRECT_TWOSIDE,
+                area_type=AreaType.DIRECT_TWOSIDE,
                 capacity=17,
             )
             session.add(area)
