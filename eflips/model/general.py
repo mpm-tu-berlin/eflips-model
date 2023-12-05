@@ -112,6 +112,9 @@ class Scenario(Base):
         "Area", back_populates="scenario", cascade="all, delete")
     """A list of areas."""
 
+    processes: Mapped[List["Process"]] = relationship(
+        "Process", back_populates="scenario", cascade="all, delete")
+    """A list of processes."""
 
 
     @staticmethod

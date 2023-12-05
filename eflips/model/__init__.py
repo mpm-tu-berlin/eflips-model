@@ -25,3 +25,4 @@ from eflips.model.depot import Depot as Depot
 from eflips.model.depot import Plan as Plan
 from eflips.model.depot import Area as Area
 from eflips.model.depot import AreaType as AreaType
+from eflips.model.depot import Process as Process
