@@ -2,12 +2,16 @@
 name = "eflips-db"
 version = "1.0.0-rc1"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
-authors = ["Ludger Heide <ludger.heide@tu-berlin.de>"]
+authors = [
+	"Ludger Heide <ludger.heide@tu-berlin.de>",
+	"Shuyao Guo <shuyo.guo@tu-berlin.de>"
+]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 homepage = "https://github.com/mpm-tu-berlin/eflips-db"
 repository = "https://github.com/mpm-tu-berlin/eflips-db"
 packages = [{ include = "eflips/model" }]
+include= ["LICENSE.md"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
