@@ -5,6 +5,8 @@ description = "A common data model for the eflips family of electric vehicle sim
 authors = ["Ludger Heide <ludger.heide@tu-berlin.de>"]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
+homepage = "https://github.com/mpm-tu-berlin/eflips-db"
+repository = "https://github.com/mpm-tu-berlin/eflips-db"
 packages = [{ include = "eflips/model" }]
 
 [tool.poetry.dependencies]
