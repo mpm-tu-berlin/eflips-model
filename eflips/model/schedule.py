@@ -56,7 +56,7 @@ class StopTime(Base):
     )
     """The arrival time at the station."""
 
-    dwell_time: Mapped[timedelta] = mapped_column(
+    dwell_duration: Mapped[timedelta] = mapped_column(
         Interval, nullable=False, default=timedelta(seconds=0)
     )
     """The dwell time at the station. Defaults to 0 if unspecified."""
@@ -64,8 +64,8 @@ class StopTime(Base):
     __table_args__ = (
         # Dwell time must be positive
         CheckConstraint(
-            "dwell_time >= '0 seconds'",
-            name="stop_time_dwell_time_positive_check",
+            "dwell_duration >= '0 seconds'",
+            name="stop_time_dwell_duration_positive_check",
         ),
         UniqueConstraint(
             "trip_id", "arrival_time", name="stop_time_arrival_unique_constraint"
@@ -129,6 +129,11 @@ class Trip(Base):
     stop_times: Mapped[List["StopTime"]] = relationship(
         "StopTime", back_populates="trip", order_by="StopTime.arrival_time"
     )
+
+    stations = relationship(
+        "Station", secondary="StopTime", order_by="StopTime.arrival_time", viewonly=True
+    )
+    """The stations of the trip."""
 
     events: Mapped[List["Event"]] = relationship("Event", back_populates="trip")
 

@@ -10,6 +10,7 @@ from sqlalchemy import (
     event,
     Float,
     ForeignKey,
+    Integer,
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -101,8 +102,8 @@ class Route(Base):
     distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The length of the route in meters."""
 
-    shape: Mapped[Geometry] = mapped_column(
-        Geometry("LINESTRING", srid=4326), nullable=True
+    geom: Mapped[Geometry] = mapped_column(
+        Geometry("LINESTRINGZ", srid=4326), nullable=True
     )
     """
     The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
@@ -122,13 +123,14 @@ class Route(Base):
         secondary="AssocRouteStation",
         back_populates="routes",
         order_by="AssocRouteStation.elapsed_distance",
+        viewonly=True,
     )
     """This is a list of all stations on the route."""
 
     __table_args__ = (
         CheckConstraint("distance > 0", name="route_distance_positive_check"),
         CheckConstraint(
-            "shape IS NULL OR ST_Length(shape, True) = distance",
+            "geom IS NULL OR ST_Length(geom, True) = distance",
             name="route_shape_distance_check",
         ),
     )
@@ -203,11 +205,20 @@ class VoltageLevel(PyEnum):
     The voltage level of a charging infrastructure. Used in analysis and simulation to determine grid load.
     """
 
-    LV = auto()
-    """Low voltage, e.g. 400V three- phase"""
+    HV = auto()
+    """High Voltage, e.g. 110kV transmission grid"""
+
+    HV_MV = auto()
+    """Both high and medium voltage"""
 
     MV = auto()
     """Medium Voltage, e.g. 10kV distribution grid"""
+
+    MV_LV = auto()
+    """Both medium and low voltage"""
+
+    LV = auto()
+    """Low voltage, e.g. 400V three- phase"""
 
 
 class ChargeType(PyEnum):
@@ -216,11 +227,17 @@ class ChargeType(PyEnum):
     charging stations.
     """
 
-    DEPOT = auto()
+    depb = auto()
     """Only charge when vehicle is not on a rotation"""
 
-    OPPORTUNITY = auto()
+    oppb = auto()
     """Aka „terminus charging“. While on a rotation, charge in the breaks between trips"""
+
+    DEPOT = depb
+    """Legacy value for depb"""
+
+    OPPORTUNITY = oppb
+    """Legacy value for oppb"""
 
 
 class Station(Base):
@@ -245,8 +262,8 @@ class Station(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """The short name of the station (if available)."""
 
-    location: Mapped[Geometry] = mapped_column(
-        Geometry("POINT", srid=4326), nullable=False
+    geom: Mapped[Geometry] = mapped_column(
+        Geometry("POINTZ", srid=4326), nullable=False
     )
     """The location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
 
@@ -254,14 +271,14 @@ class Station(Base):
     """
     Whether the station has a charging infrastructure. If yes, then
     
-    - `amount_charging_poles` must be set
+    - `amount_charging_places` must be set
     - `power_per_charger` must be set
     - `power_total` must be set
     - `charge_type` must be set
     - `voltage_level` must be set
     """
 
-    amount_charging_poles = mapped_column(BigInteger, nullable=True)
+    amount_charging_places = mapped_column(Integer, nullable=True)
     """
     The amount of charging poles at the station. If `is_electrified` is true, this must be set.
     """
@@ -280,7 +297,7 @@ class Station(Base):
     """
     The type of charging infrastructure. If `is_electrified` is true, this must be set. 
     
-    When running simBA and eflips, this is set to `OPPORTUNITY` for all stations. `DEPOT` only makes sense in standalone
+    When running simBA and eflips, this is set to `oppb` for all stations. `depb` only makes sense in standalone
     simBA runs.
     """
 
@@ -305,6 +322,11 @@ class Station(Base):
     )
     """The stop times."""
 
+    trips: Mapped[List["Trip"]] = relationship(
+        "Trip", secondary="StopTime", back_populates="stations", viewonly=True
+    )
+    """The trips stopping at this station."""
+
     assoc_route_stations: Mapped[List["AssocRouteStation"]] = relationship(
         "AssocRouteStation", back_populates="station"
     )
@@ -314,6 +336,7 @@ class Station(Base):
         "Route",
         secondary="AssocRouteStation",
         back_populates="stations",
+        viewonly=True,
     )
     """This is a list of all routes that stop at this station."""
 
@@ -323,12 +346,12 @@ class Station(Base):
     # Create a check constraint to ensure that the charging infrastructure is only set if the station is electrified.
     __table_args__ = (
         CheckConstraint(
-            "is_electrified=TRUE AND (amount_charging_poles "
+            "is_electrified=TRUE AND (amount_charging_places "
             "IS NOT NULL AND power_per_charger IS NOT NULL "
             "AND power_total IS NOT NULL "
             "AND charge_type IS NOT NULL "
             "AND voltage_level IS NOT NULL) OR "
-            "is_electrified=FALSE AND (amount_charging_poles "
+            "is_electrified=FALSE AND (amount_charging_places "
             "IS NULL AND power_per_charger IS NULL "
             "AND power_total IS NULL "
             "AND charge_type IS NULL "
@@ -368,9 +391,9 @@ class AssocRouteStation(Base):
     """The station."""
 
     location: Mapped[Geometry] = mapped_column(
-        Geometry("POINT", srid=4326), nullable=True
+        Geometry("POINTZ", srid=4326), nullable=True
     )
     """An optional precise location of the this route's stop at the station. Use WGS84 coordinates (EPSG:4326)."""
 
     elapsed_distance: Mapped[float] = mapped_column(Float, nullable=False)
-    """The distance that the bus has traveled at this stop time."""
+    """The distance in m that the bus has traveled when it reached this stop."""

@@ -9,7 +9,7 @@
 project = "eFLIPS-DB"
 copyright = "2023, Technische Universität Berlin"
 author = "Ludger Heide"
-release = "0.1.0"
+release = "1.0.0-rc1"
 
 
 # -- General configuration ---------------------------------------------------

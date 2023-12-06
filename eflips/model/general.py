@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from enum import auto, Enum as PyEnum
 from typing import Any, Dict, List, TYPE_CHECKING, Union
@@ -14,6 +15,7 @@ from sqlalchemy import (
     func,
     Integer,
     Text,
+    UUID,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
@@ -76,6 +78,10 @@ class Scenario(Base):
         postgresql.JSONB, nullable=True
     )
     """The options for the eflips-depot simulation. Stored as a JSON object."""
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=True, unique=True
+    )
+    """The task id of the simulation. Automatically set to a UUID when a scenario is submitted for simulation."""
 
     # Most of the other columns (all except the Assoc-Tables for many-to-many relationships) have the scenario_id
     # as a foreign key. They are mapped below.
@@ -145,6 +151,9 @@ class Scenario(Base):
         "Process", back_populates="scenario", cascade="all, delete"
     )
     """A list of processes."""
+    assoc_plan_processes: Mapped[List["AssocPlanProcess"]] = relationship(
+        "AssocPlanProcess", back_populates="scenario", cascade="all, delete"
+    )
 
     @staticmethod
     def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> None:
@@ -269,6 +278,12 @@ class Scenario(Base):
                 self._copy_object(process, session, scenario_copy)
                 process_id_map[original_id] = process
 
+            assoc_plan_process_id_map: Dict[int, "AssocPlanProcess"] = {}
+            for assoc_plan_process in self.assoc_plan_processes:
+                original_id = assoc_plan_process.id
+                self._copy_object(assoc_plan_process, session, scenario_copy)
+                assoc_plan_process_id_map[original_id] = assoc_plan_process
+
         # This assigns the new ids
         session.flush()
 
@@ -387,27 +402,12 @@ class Scenario(Base):
                     " the scenario."
                 )
 
-        # Process <-> Plan is a many-to-many relationship, so we need to update the association table
+        # AssocPlanProcess <-> Plan, Process
         for plan_process_entry in session.query(AssocPlanProcess):
-            if (
-                plan_process_entry.plan_id in plan_id_map
-                and plan_process_entry.process_id in process_id_map
-            ):
-                new_plan_process_entry = AssocPlanProcess(
-                    plan_id=plan_id_map[plan_process_entry.plan_id].id,
-                    process_id=process_id_map[plan_process_entry.process_id].id,
-                )
-                session.add(new_plan_process_entry)
-            elif (
-                plan_process_entry.plan_id not in plan_id_map
-                and plan_process_entry.process_id in process_id_map
-            ):
-                pass
-            else:
-                raise ValueError(
-                    "There exists an association between a plan and a process that is not in"
-                    " the scenario."
-                )
+            plan_process_entry.plan_id = plan_id_map[plan_process_entry.plan_id].id
+            plan_process_entry.process_id = process_id_map[
+                plan_process_entry.process_id
+            ].id
 
         session.flush()
         return scenario_copy
@@ -451,7 +451,9 @@ class VehicleType(Base):
     battery_capacity_constraint = CheckConstraint("battery_capacity > 0")
     _table_args_list.append(battery_capacity_constraint)
 
-    battery_capacity_reserve: Mapped[float] = mapped_column(Float, nullable=True)
+    battery_capacity_reserve: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="0.0"
+    )
     """The battery capacity reserve below 0 kWh 'capacity' in kWh. Using this value in generating evaluation, 
     things such as "always 10% reserve" can be modeled."""
     battery_capacity_reserve_constraint = CheckConstraint(
@@ -460,7 +462,7 @@ class VehicleType(Base):
     _table_args_list.append(battery_capacity_reserve_constraint)
 
     charging_curve: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Integer, dimensions=2)
+        postgresql.ARRAY(Float, dimensions=2)
     )
     """
     The charging curve of the vehicle type. This is a 2D array of floats with two rows. The first row contains
@@ -470,7 +472,7 @@ class VehicleType(Base):
     """
 
     v2g_curve: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Integer, dimensions=2), nullable=True
+        postgresql.ARRAY(Float, dimensions=2), nullable=True
     )
     """
     The vehicle-to-grid curve of the vehicle type. This is a 2D array of floats with two rows. The first row contains
@@ -486,7 +488,7 @@ class VehicleType(Base):
     charging_efficiency_constraint_upper = CheckConstraint("charging_efficiency <= 1")
     _table_args_list.append(charging_efficiency_constraint_upper)
 
-    opportunity_charge_capable: Mapped[bool] = mapped_column(Boolean)
+    opportunity_charging_capable: Mapped[bool] = mapped_column(Boolean)
     """
     Whether the bus is capable of automatic highpower charging. All buses are assumed to be capable of (depot) 
     conductive charging.
@@ -499,17 +501,23 @@ class VehicleType(Base):
 
     # Shape is a three-entry array of floats, representing the length, width, and height of the vehicle in meters.
     shape: Mapped[List[float]] = mapped_column(
-        postgresql.ARRAY(Integer, dimensions=1, as_tuple=True), nullable=True
+        postgresql.ARRAY(Float, dimensions=1, as_tuple=True), nullable=True
     )
     """
     The shape of the vehicle. This is a 1D array of floats with three entries, representing the length, width, and
     height of the vehicle in meters.
     """
 
-    empty_mass: Mapped[float] = mapped_column(Float, nullable=True)
+    empty_mass_kg: Mapped[float] = mapped_column(Float, nullable=True)
     """The empty mass of the vehicle in kg."""
-    empty_mass_constraint = CheckConstraint("empty_mass > 0")
-    _table_args_list.append(empty_mass_constraint)
+    empty_mass_kg_constraint = CheckConstraint("empty_mass_kg > 0")
+    _table_args_list.append(empty_mass_kg_constraint)
+
+    consumption: Mapped[float] = mapped_column(Float, nullable=True)
+    """
+    The vehicle's energy consumption in kWh/km. This is used to calculate the energy consumption of a trip. Can
+    be None if we are using more detailed consumption models.
+    """
 
     vehicles: Mapped[List["Vehicle"]] = relationship(
         "Vehicle", back_populates="vehicle_type"
@@ -554,7 +562,7 @@ class BatteryType(Base):
         "VehicleType", back_populates="battery_type"
     )
 
-    specific_mass: Mapped[float] = mapped_column(Float)
+    specific_mass_kg_per_kwh: Mapped[float] = mapped_column(Float)
     """The specific mass of the battery in kg/kWh. Relative to gross (not net) capacity."""
 
     chemistry: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSONB)
@@ -641,15 +649,13 @@ class AssocVehicleTypeVehicleClass(Base):
     """
 
     __tablename__ = "AssocVehicleTypeVehicleClass"
+    id = mapped_column(BigInteger, primary_key=True)
+    """Not the primary key and not used in SQLAlchemy, but required by Django."""
 
-    vehicle_type_id: Mapped[int] = mapped_column(
-        ForeignKey("VehicleType.id"), primary_key=True
-    )
+    vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
 
-    vehicle_class_id: Mapped[int] = mapped_column(
-        ForeignKey("VehicleClass.id"), primary_key=True
-    )
+    vehicle_class_id: Mapped[int] = mapped_column(ForeignKey("VehicleClass.id"))
     """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
 
 
@@ -740,15 +746,15 @@ class Event(Base):
     )
     """The time the event starts."""
 
-    time_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    time_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     """The time the event ends."""
 
-    soc_start: Mapped[float] = mapped_column(Float, nullable=True)
+    soc_start: Mapped[float] = mapped_column(Float, nullable=False)
     """
     The state of charge at the start of the event. This should refer to the net battery capacity.
     """
 
-    soc_end: Mapped[float] = mapped_column(Float, nullable=True)
+    soc_end: Mapped[float] = mapped_column(Float, nullable=False)
     """The state of charge at the end of the event. This should refer to the net battery capacity."""
 
     event_type: Mapped[EventType] = mapped_column(SqlEnum(EventType), nullable=False)

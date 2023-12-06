@@ -3,7 +3,16 @@ from datetime import timedelta
 import pytest
 import sqlalchemy
 
-from eflips.model import Area, AreaType, Depot, Plan, Process, Scenario, VehicleType
+from eflips.model import (
+    Area,
+    AreaType,
+    Depot,
+    Plan,
+    Process,
+    Scenario,
+    VehicleType,
+    AssocPlanProcess,
+)
 from tests.test_general import TestGeneral
 
 
@@ -27,7 +36,7 @@ class TestDepot(TestGeneral):
             scenario=scenario,
             name="Test Area",
             depot=depot,
-            type=AreaType.LINE,
+            area_type=AreaType.LINE,
             row_count=2,
             capacity=6,
         )
@@ -39,7 +48,7 @@ class TestDepot(TestGeneral):
             name="Test Vehicle Type 2",
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
         area.vehicle_type = test_vehicle_type
 
@@ -64,8 +73,12 @@ class TestDepot(TestGeneral):
         area.processes.append(clean)
         area.processes.append(charging)
 
-        plan.processes.append(clean)
-        plan.processes.append(charging)
+        plan.asssoc_plan_process.append(
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1)
+        )
+        plan.asssoc_plan_process.append(
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2)
+        )
 
         session.commit()
 
@@ -86,14 +99,14 @@ class TestArea(TestDepot):
             name="Test Vehicle Type 2",
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
 
         line_area = Area(
             scenario=scenario,
             depot=depot_with_content,
             name="line area",
-            type=AreaType.LINE,
+            area_type=AreaType.LINE,
             row_count=2,
             capacity=6,
         )
@@ -105,7 +118,7 @@ class TestArea(TestDepot):
             scenario=scenario,
             depot=depot_with_content,
             name="direct two side Area",
-            type=AreaType.DIRECT_TWOSIDE,
+            area_type=AreaType.DIRECT_TWOSIDE,
             capacity=4,
         )
         direct_twoside_area.vehicle_type = vehicle_type
@@ -115,7 +128,7 @@ class TestArea(TestDepot):
             scenario=scenario,
             depot=depot_with_content,
             name="direct one side",
-            type=AreaType.DIRECT_ONESIDE,
+            area_type=AreaType.DIRECT_ONESIDE,
             capacity=7,
         )
         direct_oneside_area.vehicle_type = vehicle_type
@@ -130,7 +143,7 @@ class TestArea(TestDepot):
             name="Test Vehicle Type 2",
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
 
         with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -138,7 +151,7 @@ class TestArea(TestDepot):
                 scenario=scenario,
                 name="Test Area 1",
                 depot=depot_with_content,
-                type=AreaType.LINE,
+                area_type=AreaType.LINE,
                 row_count=2,
                 capacity=5,
             )
@@ -153,7 +166,7 @@ class TestArea(TestDepot):
                 scenario=scenario,
                 name="Test Area 2",
                 depot=depot_with_content,
-                type=AreaType.DIRECT_ONESIDE,
+                area_type=AreaType.DIRECT_ONESIDE,
                 capacity=-5,
             )
             session.add(area)
@@ -167,7 +180,7 @@ class TestArea(TestDepot):
                 scenario=scenario,
                 name="Test Area 3",
                 depot=depot_with_content,
-                type=AreaType.DIRECT_TWOSIDE,
+                area_type=AreaType.DIRECT_TWOSIDE,
                 capacity=17,
             )
             session.add(area)
@@ -281,7 +294,9 @@ class TestProcess(TestGeneral):
         plan = Plan(scenario=scenario, name="Test Plan")
 
         session.add(plan)
-        plan.processes.append(process)
+        plan.asssoc_plan_process.append(
+            AssocPlanProcess(scenario=scenario, process=process, plan=plan, ordinal=1)
+        )
         session.commit()
 
         assert process.plans == [plan]

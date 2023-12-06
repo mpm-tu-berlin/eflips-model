@@ -1,21 +1,21 @@
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 
 import pytest
 import sqlalchemy
 from sqlalchemy import func
 
 from eflips.model import (
+    AssocRouteStation,
     ChargeType,
     Line,
+    Rotation,
     Route,
     Station,
-    VoltageLevel,
-    AssocRouteStation,
-    VehicleType,
-    Rotation,
+    StopTime,
     Trip,
     TripType,
-    StopTime,
+    VehicleType,
+    VoltageLevel,
 )
 from test_general import TestGeneral
 
@@ -33,14 +33,14 @@ class TestRoute(TestGeneral):
         """Create two stations for testing."""
         station_1 = Station(
             name="Hauptbahnhof",
-            location="POINT(13.304398212525141 52.4995532470573)",
+            geom="POINT(13.304398212525141 52.4995532470573 0)",
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -91,7 +91,7 @@ class TestRoute(TestGeneral):
         session.commit()
 
         # Create a shape
-        shape = "LINESTRING(13.304398212525141 52.4995532470573,13.328859958740962 52.50315841433728)"
+        shape = "LINESTRINGZ(13.304398212525141 52.4995532470573 0,13.328859958740962 52.50315841433728 0)"
 
         route = Route(
             name="1 Hauptbahnhof -> Hauptfriedhof",
@@ -101,13 +101,13 @@ class TestRoute(TestGeneral):
             arrival_station=stations[1],
             line=line,
             distance=0,
-            shape=shape,
+            geom=shape,
             scenario=scenario,
         )
         session.add(route)
 
         # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.shape, True).select())
+        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
         session.commit()
 
     def test_create_route_invalid_distance(self, session, scenario, stations):
@@ -138,7 +138,7 @@ class TestRoute(TestGeneral):
 
     def test_route_invalid_distance(self, session, scenario, stations):
         # Create a shape
-        shape = "LINESTRING(13.304398212525141 52.4995532470573,13.328859958740962 52.50315841433728)"
+        shape = "LINESTRINGZ(13.304398212525141 52.4995532470573 0,13.328859958740962 52.50315841433728 0)"
 
         route = Route(
             scenario=scenario,
@@ -146,7 +146,7 @@ class TestRoute(TestGeneral):
             arrival_station=stations[1],
             name="1 Hauptbahnhof -> Hauptfriedhof",
             distance=100,
-            shape=shape,
+            geom=shape,
         )
 
         with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -155,7 +155,7 @@ class TestRoute(TestGeneral):
         session.rollback()
 
         # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.shape, True).select())
+        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
         session.add(route)
         session.commit()
 
@@ -307,7 +307,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -339,7 +339,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -387,7 +387,7 @@ class TestRoute(TestGeneral):
             scenario=scenario,
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=False,
+            opportunity_charging_capable=False,
         )
         session.add(vehicle_type)
 
@@ -453,12 +453,12 @@ class TestRoute(TestGeneral):
 
 class TestStation(TestGeneral):
     def test_create_station(self, session, scenario):
-        location = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573 0)"
 
         # Create a simple station
         station = Station(
             name="Hauptbahnhof",
-            location=location,
+            geom=geom,
             scenario=scenario,
             is_electrified=False,
         )
@@ -466,12 +466,12 @@ class TestStation(TestGeneral):
         session.commit()
 
     def test_create_station_invalid_electrification(self, session, scenario):
-        location = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573 0)"
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                location=location,
+                geom=geom,
                 scenario=scenario,
                 is_electrified=True,
             )
@@ -482,7 +482,7 @@ class TestStation(TestGeneral):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                location=location,
+                geom=geom,
                 scenario=scenario,
                 is_electrified=False,
                 power_total=100,
@@ -495,7 +495,7 @@ class TestStation(TestGeneral):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                location=".jkdfaghjkl",
+                geom=".jkdfaghjkl",
                 scenario=scenario,
                 is_electrified=False,
                 power_total=100,
@@ -505,15 +505,15 @@ class TestStation(TestGeneral):
         session.rollback()
 
     def test_create_station_complete(self, session, scenario):
-        location = "POINT(13.304398212525141 52.4995532470573)"
+        geom = "POINT(13.304398212525141 52.4995532470573 0)"
 
         # Create a simple station
         station = Station(
             name="Hauptbahnhof",
-            location=location,
+            geom=geom,
             scenario=scenario,
             is_electrified=True,
-            amount_charging_poles=2,
+            amount_charging_places=2,
             power_per_charger=22,
             power_total=44,
             charge_type=ChargeType.DEPOT,

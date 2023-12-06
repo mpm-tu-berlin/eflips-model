@@ -28,6 +28,7 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
+    AssocPlanProcess,
 )
 from eflips.model.general import AssocVehicleTypeVehicleClass
 
@@ -63,11 +64,11 @@ class TestGeneral:
             name="Test Vehicle Type",
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass_kg_per_kwh=100, chemistry={"test": "test"}
         )
         session.add(battery_type)
         vehicle_type.battery_type = battery_type
@@ -78,7 +79,7 @@ class TestGeneral:
             name="Test Vehicle Type 2",
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
         session.add(vehicle_type)
 
@@ -110,7 +111,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            location="POINT(0 0)",
+            geom="POINT(0 0 0)",
             is_electrified=False,
         )
         session.add(stop_1)
@@ -119,7 +120,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            location="POINT(1 0)",
+            geom="POINT(1 0 0)",
             is_electrified=False,
         )
         session.add(stop_2)
@@ -128,7 +129,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            location="POINT(2 0)",
+            geom="POINT(2 0 0)",
             is_electrified=False,
         )
 
@@ -277,7 +278,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Area",
             depot=depot,
-            type=AreaType.LINE,
+            area_type=AreaType.LINE,
             row_count=2,
             capacity=6,
         )
@@ -306,8 +307,10 @@ class TestGeneral:
         area.processes.append(clean)
         area.processes.append(charging)
 
-        plan.processes.append(clean)
-        plan.processes.append(charging)
+        assocs = [
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
+        ]
 
         session.commit()
         return scenario
@@ -411,14 +414,14 @@ class TestVehicleType(TestGeneral):
             scenario=scenario,
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
         session.add(vehicle_type)
         session.commit()
 
         # Create one with all fields
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass_kg_per_kwh=100, chemistry={"test": "test"}
         )
         vehicle_type = VehicleType(
             name="Test Vehicle Type",
@@ -429,10 +432,10 @@ class TestVehicleType(TestGeneral):
             charging_curve=[[0, 150], [1, 150]],
             v2g_curve=[[0, 150], [1, 150]],
             charging_efficiency=0.9,
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
             minimum_charging_power=10,
             shape=(2, 4, 12),
-            empty_mass=12000,
+            empty_mass_kg=12000,
         )
         session.add(vehicle_type)
         session.commit()
@@ -445,7 +448,7 @@ class TestVehicleType(TestGeneral):
                     scenario=scenario,
                     battery_capacity=battery_capacity,
                     charging_curve=[[0, 150], [1, 150]],
-                    opportunity_charge_capable=True,
+                    opportunity_charging_capable=True,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -461,7 +464,7 @@ class TestVehicleType(TestGeneral):
                 battery_capacity=100,
                 battery_capacity_reserve=-10,
                 charging_curve=[[0, 150], [1, 150]],
-                opportunity_charge_capable=True,
+                opportunity_charging_capable=True,
             )
             session.add(vehicle_type)
             session.commit()
@@ -474,7 +477,7 @@ class TestVehicleType(TestGeneral):
             battery_capacity=100,
             battery_capacity_reserve=0,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
         session.add(vehicle_type)
         session.commit()
@@ -488,7 +491,7 @@ class TestVehicleType(TestGeneral):
                     battery_capacity=100,
                     charging_curve=[[0, 150], [1, 150]],
                     charging_efficiency=charging_efficiency,
-                    opportunity_charge_capable=True,
+                    opportunity_charging_capable=True,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -503,7 +506,7 @@ class TestVehicleType(TestGeneral):
                 scenario=scenario,
                 battery_capacity=100,
                 charging_curve=[[0, 150], [1, 150]],
-                opportunity_charge_capable=True,
+                opportunity_charging_capable=True,
                 minimum_charging_power=-10,
             )
             session.add(vehicle_type)
@@ -517,8 +520,8 @@ class TestVehicleType(TestGeneral):
                     scenario=scenario,
                     battery_capacity=100,
                     charging_curve=[[0, 150], [1, 150]],
-                    opportunity_charge_capable=True,
-                    empty_mass=empty_weight,
+                    opportunity_charging_capable=True,
+                    empty_mass_kg=empty_weight,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -528,7 +531,7 @@ class TestVehicleType(TestGeneral):
 class TestBatteryType(TestGeneral):
     def test_create_battery_type(self, session, scenario):
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass_kg_per_kwh=100, chemistry={"test": "test"}
         )
         session.add(battery_type)
         session.commit()
@@ -550,7 +553,7 @@ class TestVehicleClass(TestGeneral):
             name="Test Vehicle Type",
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
         session.add(vehicle_type)
 
@@ -578,7 +581,7 @@ class TestVehicleClass(TestGeneral):
             name="Test Vehicle Type",
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=True,
+            opportunity_charging_capable=True,
         )
         session.add(vehicle_type)
 
@@ -622,6 +625,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.DRIVING,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
         session.add(event)
         session.commit()
@@ -635,6 +640,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
         session.add(event)
         session.commit()
@@ -656,6 +663,8 @@ class TestEvent(TestGeneral):
                 event_type=event_type,
                 time_start=session.query(Trip).first().departure_time,
                 time_end=session.query(Trip).first().arrival_time,
+                soc_start=0.5,
+                soc_end=0.5,
             )
             session.add(event)
             with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -677,6 +686,8 @@ class TestEvent(TestGeneral):
                 event_type=event_type,
                 time_start=session.query(Trip).first().departure_time,
                 time_end=session.query(Trip).first().arrival_time,
+                soc_start=0.5,
+                soc_end=0.5,
             )
             session.add(event)
             with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -716,6 +727,8 @@ class TestEvent(TestGeneral):
             vehicle_type=session.query(VehicleType).first(),
             event_type=EventType.CHARGING_DEPOT,
             subloc_no=1,
+            soc_start=0.5,
+            soc_end=0.5,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
         )
@@ -732,6 +745,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         event_2 = Event(
@@ -742,6 +757,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().arrival_time - timedelta(minutes=10),
             time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         session.add(event_1)
@@ -759,6 +776,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().departure_time,
             time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         event_2 = Event(
@@ -770,6 +789,8 @@ class TestEvent(TestGeneral):
             event_type=EventType.CHARGING_OPPORTUNITY,
             time_start=session.query(Trip).first().arrival_time - timedelta(minutes=10),
             time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+            soc_start=0.5,
+            soc_end=0.5,
         )
 
         session.add(event_1)

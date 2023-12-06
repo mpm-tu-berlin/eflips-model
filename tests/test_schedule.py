@@ -25,7 +25,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_1 = Station(
             name="Hauptbahnhof",
-            location="POINT(13.304398212525141 52.4995532470573)",
+            geom="POINT(13.304398212525141 52.4995532470573 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -33,7 +33,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_2 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -54,7 +54,7 @@ class TestTripAndStopTime(TestGeneral):
             scenario=scenario,
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=False,
+            opportunity_charging_capable=False,
         )
         session.add(vehicle_type)
 
@@ -130,7 +130,7 @@ class TestTripAndStopTime(TestGeneral):
 
         intermediate_station = Station(
             name="Zwischenstation",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -156,7 +156,7 @@ class TestTripAndStopTime(TestGeneral):
 
         session.commit()
 
-    def test_stop_time_invalid_dwell_time(self, session, trip):
+    def test_stop_time_invalid_dwell_duration(self, session, trip):
         session.add(trip)
 
         stop_times = []
@@ -167,7 +167,7 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.departure_station,
                 arrival_time=trip.departure_time,
-                dwell_time=timedelta(minutes=-11),
+                dwell_duration=timedelta(minutes=-11),
             )
         )
 
@@ -195,7 +195,7 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.departure_station,
                 arrival_time=trip.departure_time,
-                dwell_time=timedelta(minutes=1),
+                dwell_duration=timedelta(minutes=1),
             )
         )
 
@@ -205,7 +205,7 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.arrival_station,
                 arrival_time=trip.arrival_time - timedelta(minutes=1),
-                dwell_time=timedelta(minutes=1),
+                dwell_duration=timedelta(minutes=1),
             )
         )
         trip.stop_times = stop_times
@@ -224,7 +224,7 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.departure_station,
                 arrival_time=trip.departure_time + timedelta(minutes=1),
-                dwell_time=timedelta(minutes=1),
+                dwell_duration=timedelta(minutes=1),
             )
         )
 
@@ -234,7 +234,7 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.arrival_station,
                 arrival_time=trip.arrival_time,
-                dwell_time=timedelta(minutes=1),
+                dwell_duration=timedelta(minutes=1),
             )
         )
 
@@ -248,7 +248,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -260,7 +260,7 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=station_3,
                 arrival_time=trip.departure_time,
-                dwell_time=timedelta(minutes=1),
+                dwell_duration=timedelta(minutes=1),
             )
         )
         stop_times.append(
@@ -281,7 +281,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -293,7 +293,7 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.departure_station,
                 arrival_time=trip.departure_time,
-                dwell_time=timedelta(minutes=1),
+                dwell_duration=timedelta(minutes=1),
             )
         )
         stop_times.append(
@@ -392,7 +392,7 @@ class TestTripAndStopTime(TestGeneral):
             stations.append(
                 Station(
                     name=f"Station {i}",
-                    location=f"POINT({i} {i})",
+                    geom=f"POINT({i} {i} 0)",
                     scenario=trip.scenario,
                     is_electrified=False,
                 )
@@ -440,14 +440,14 @@ class TestRotation(TestGeneral):
     def trips(self, session, scenario):
         station_1 = Station(
             name="Hauptbahnhof",
-            location="POINT(13.304398212525141 52.4995532470573)",
+            geom="POINT(13.304398212525141 52.4995532470573 0)",
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            location="POINT(13.328859958740962 52.50315841433728)",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
             scenario=scenario,
             is_electrified=False,
         )
@@ -514,7 +514,7 @@ class TestRotation(TestGeneral):
             scenario=scenario,
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=False,
+            opportunity_charging_capable=False,
         )
         session.add(vehicle_type)
 
@@ -536,7 +536,7 @@ class TestRotation(TestGeneral):
             scenario=scenario,
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=False,
+            opportunity_charging_capable=False,
         )
         session.add(vehicle_type)
 
@@ -561,7 +561,7 @@ class TestRotation(TestGeneral):
             scenario=scenario,
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
-            opportunity_charge_capable=False,
+            opportunity_charging_capable=False,
         )
         session.add(vehicle_type)
 
