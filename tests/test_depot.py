@@ -3,7 +3,16 @@ from datetime import timedelta
 import pytest
 import sqlalchemy
 
-from eflips.model import Area, AreaType, Depot, Plan, Process, Scenario, VehicleType
+from eflips.model import (
+    Area,
+    AreaType,
+    Depot,
+    Plan,
+    Process,
+    Scenario,
+    VehicleType,
+    AssocPlanProcess,
+)
 from tests.test_general import TestGeneral
 
 
@@ -64,8 +73,12 @@ class TestDepot(TestGeneral):
         area.processes.append(clean)
         area.processes.append(charging)
 
-        plan.processes.append(clean)
-        plan.processes.append(charging)
+        plan.asssoc_plan_process.append(
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1)
+        )
+        plan.asssoc_plan_process.append(
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2)
+        )
 
         session.commit()
 
@@ -281,7 +294,9 @@ class TestProcess(TestGeneral):
         plan = Plan(scenario=scenario, name="Test Plan")
 
         session.add(plan)
-        plan.processes.append(process)
+        plan.asssoc_plan_process.append(
+            AssocPlanProcess(scenario=scenario, process=process, plan=plan, ordinal=1)
+        )
         session.commit()
 
         assert process.plans == [plan]

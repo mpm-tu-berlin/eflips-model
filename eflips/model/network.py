@@ -123,6 +123,7 @@ class Route(Base):
         secondary="AssocRouteStation",
         back_populates="routes",
         order_by="AssocRouteStation.elapsed_distance",
+        viewonly=True,
     )
     """This is a list of all stations on the route."""
 
@@ -321,6 +322,11 @@ class Station(Base):
     )
     """The stop times."""
 
+    trips: Mapped[List["Trip"]] = relationship(
+        "Trip", secondary="StopTime", back_populates="stations", viewonly=True
+    )
+    """The trips stopping at this station."""
+
     assoc_route_stations: Mapped[List["AssocRouteStation"]] = relationship(
         "AssocRouteStation", back_populates="station"
     )
@@ -330,6 +336,7 @@ class Station(Base):
         "Route",
         secondary="AssocRouteStation",
         back_populates="stations",
+        viewonly=True,
     )
     """This is a list of all routes that stop at this station."""
 

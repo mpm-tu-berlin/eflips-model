@@ -151,6 +151,9 @@ class Scenario(Base):
         "Process", back_populates="scenario", cascade="all, delete"
     )
     """A list of processes."""
+    assoc_plan_processes: Mapped[List["AssocPlanProcess"]] = relationship(
+        "AssocPlanProcess", back_populates="scenario", cascade="all, delete"
+    )
 
     @staticmethod
     def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> None:
@@ -275,6 +278,12 @@ class Scenario(Base):
                 self._copy_object(process, session, scenario_copy)
                 process_id_map[original_id] = process
 
+            assoc_plan_process_id_map: Dict[int, "AssocPlanProcess"] = {}
+            for assoc_plan_process in self.assoc_plan_processes:
+                original_id = assoc_plan_process.id
+                self._copy_object(assoc_plan_process, session, scenario_copy)
+                assoc_plan_process_id_map[original_id] = assoc_plan_process
+
         # This assigns the new ids
         session.flush()
 
@@ -393,27 +402,12 @@ class Scenario(Base):
                     " the scenario."
                 )
 
-        # Process <-> Plan is a many-to-many relationship, so we need to update the association table
+        # AssocPlanProcess <-> Plan, Process
         for plan_process_entry in session.query(AssocPlanProcess):
-            if (
-                plan_process_entry.plan_id in plan_id_map
-                and plan_process_entry.process_id in process_id_map
-            ):
-                new_plan_process_entry = AssocPlanProcess(
-                    plan_id=plan_id_map[plan_process_entry.plan_id].id,
-                    process_id=process_id_map[plan_process_entry.process_id].id,
-                )
-                session.add(new_plan_process_entry)
-            elif (
-                plan_process_entry.plan_id not in plan_id_map
-                and plan_process_entry.process_id in process_id_map
-            ):
-                pass
-            else:
-                raise ValueError(
-                    "There exists an association between a plan and a process that is not in"
-                    " the scenario."
-                )
+            plan_process_entry.plan_id = plan_id_map[plan_process_entry.plan_id].id
+            plan_process_entry.process_id = process_id_map[
+                plan_process_entry.process_id
+            ].id
 
         session.flush()
         return scenario_copy

@@ -28,6 +28,7 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
+    AssocPlanProcess,
 )
 from eflips.model.general import AssocVehicleTypeVehicleClass
 
@@ -306,8 +307,10 @@ class TestGeneral:
         area.processes.append(clean)
         area.processes.append(charging)
 
-        plan.processes.append(clean)
-        plan.processes.append(charging)
+        assocs = [
+            AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
+            AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
+        ]
 
         session.commit()
         return scenario

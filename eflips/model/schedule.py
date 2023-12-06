@@ -130,6 +130,11 @@ class Trip(Base):
         "StopTime", back_populates="trip", order_by="StopTime.arrival_time"
     )
 
+    stations = relationship(
+        "Station", secondary="StopTime", order_by="StopTime.arrival_time", viewonly=True
+    )
+    """The stations of the trip."""
+
     events: Mapped[List["Event"]] = relationship("Event", back_populates="trip")
 
     # Create a check constraint to ensure that the arrival time is after the departure time.

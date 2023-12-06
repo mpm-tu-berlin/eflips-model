@@ -70,10 +70,19 @@ class Plan(Base):
 
     depot: Mapped["Depot"] = relationship("Depot", back_populates="default_plan")
 
+    asssoc_plan_process: Mapped[List["AssocPlanProcess"]] = relationship(
+        "AssocPlanProcess",
+        back_populates="plan",
+        order_by="AssocPlanProcess.ordinal",
+    )
+    """The association between this plan and its processes. Here, the ordinal of the process can be set."""
+
     processes: Mapped[List["Process"]] = relationship(
         "Process",
         secondary="AssocPlanProcess",
         back_populates="plans",
+        order_by="AssocPlanProcess.ordinal",
+        viewonly=True,
     )
 
 
@@ -109,9 +118,6 @@ class Area(Base):
     """The unique identifier of the depot. Foreign key to :attr:`Depot.id`."""
     depot: Mapped["Depot"] = relationship("Depot", back_populates="areas")
 
-    name: Mapped[str] = mapped_column(Text)
-    """A name for the area."""
-
     vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
     vehicle_type: Mapped["VehicleType"] = relationship(
@@ -122,7 +128,14 @@ class Area(Base):
     area_type = mapped_column(SqlEnum(AreaType))
     """The type of the area. See :class:`depot.AreaType`."""
 
+    name: Mapped[str] = mapped_column(Text, nullable=True)
+    """An optional name for the area."""
+
+    name_short: Mapped[str] = mapped_column(Text, nullable=True)
+    """An optional short name for the area."""
+
     row_count: Mapped[int] = mapped_column(Integer, nullable=True)
+    """The number of rows in the area. Null if the area is not a line area."""
 
     row_count_constraint = CheckConstraint(
         "(area_type = 'LINE' AND row_count > 0) OR"
@@ -192,6 +205,7 @@ class Process(Base):
         "Plan",
         secondary="AssocPlanProcess",
         back_populates="processes",
+        viewonly=True,
     )
 
     areas: Mapped[List["Area"]] = relationship(
@@ -219,11 +233,25 @@ class AssocPlanProcess(Base):
     id = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the association. Auto-incremented. Needed for django."""
 
+    scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
+    """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
+    scenario: Mapped["Scenario"] = relationship(
+        "Scenario", back_populates="assoc_plan_processes"
+    )
+    """The scenario."""
+
     plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"))
     """The unique identifier of the plan. Foreign key to :attr:`Plan.id`."""
+    plan: Mapped["Plan"] = relationship("Plan")
+    """The plan."""
 
     process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"))
     """The unique identifier of the process. Foreign key to :attr:`Process.id`."""
+    process: Mapped["Process"] = relationship("Process")
+    """The process."""
+
+    ordinal: Mapped[int] = mapped_column(Integer)
+    """The ordinal of the process in the plan."""
 
 
 class AssocAreaProcess(Base):
