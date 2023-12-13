@@ -403,12 +403,13 @@ class Scenario(Base):
                 )
 
         # AssocPlanProcess <-> Plan, Process
-        for plan_process_entry in session.query(AssocPlanProcess):
+        # For some reason, here we need to create new AssocPlanProcess for the old scenario objects instead of just
+        # updating the ids.
+        for plan_process_entry in scenario_copy.assoc_plan_processes:
             plan_process_entry.plan_id = plan_id_map[plan_process_entry.plan_id].id
             plan_process_entry.process_id = process_id_map[
                 plan_process_entry.process_id
             ].id
-
         session.flush()
         return scenario_copy
 
