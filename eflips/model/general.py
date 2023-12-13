@@ -500,14 +500,23 @@ class VehicleType(Base):
     minimum_charging_power_constraint = CheckConstraint("minimum_charging_power >= 0")
     _table_args_list.append(minimum_charging_power_constraint)
 
-    # Shape is a three-entry array of floats, representing the length, width, and height of the vehicle in meters.
-    shape: Mapped[List[float]] = mapped_column(
-        postgresql.ARRAY(Float, dimensions=1, as_tuple=True), nullable=True
+    # Shape is specified in length, width, height
+    length: Mapped[float] = mapped_column(Float, nullable=True)
+    """The length of the vehicle in meters."""
+
+    width: Mapped[float] = mapped_column(Float, nullable=True)
+    """The width of the vehicle in meters."""
+
+    height: Mapped[float] = mapped_column(Float, nullable=True)
+    """The height of the vehicle in meters."""
+
+    # Length, width, and height must either all be None or all be not None
+    _table_args_list.append(
+        CheckConstraint(
+            "(length IS NULL AND width IS NULL AND height IS NULL) OR "
+            "(length IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL)"
+        )
     )
-    """
-    The shape of the vehicle. This is a 1D array of floats with three entries, representing the length, width, and
-    height of the vehicle in meters.
-    """
 
     empty_mass_kg: Mapped[float] = mapped_column(Float, nullable=True)
     """The empty mass of the vehicle in kg."""
@@ -563,7 +572,7 @@ class BatteryType(Base):
         "VehicleType", back_populates="battery_type"
     )
 
-    specific_mass_kg_per_kwh: Mapped[float] = mapped_column(Float)
+    specific_mass: Mapped[float] = mapped_column(Float)
     """The specific mass of the battery in kg/kWh. Relative to gross (not net) capacity."""
 
     chemistry: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSONB)
