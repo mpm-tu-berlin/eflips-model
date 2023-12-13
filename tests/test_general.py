@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from eflips.model import (
     Area,
     AreaType,
+    AssocPlanProcess,
     AssocRouteStation,
     Base,
     BatteryType,
@@ -28,7 +29,6 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
-    AssocPlanProcess,
 )
 from eflips.model.general import AssocVehicleTypeVehicleClass
 
@@ -311,6 +311,7 @@ class TestGeneral:
             AssocPlanProcess(scenario=scenario, process=clean, plan=plan, ordinal=1),
             AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2),
         ]
+        session.add_all(assocs)
 
         session.commit()
         return scenario
@@ -346,6 +347,26 @@ class TestScenario(TestGeneral):
         assert scenario.simba_options is None
 
     def test_copy_scenario(self, session, sample_content):
+        # Find the associations between plans and processes
+        assoc_plan_processes = (
+            session.query(AssocPlanProcess)
+            .filter(AssocPlanProcess.scenario == sample_content)
+            .order_by(AssocPlanProcess.ordinal)
+            .all()
+        )
+
+        assert len(assoc_plan_processes) == 2
+        # Remember the name of each plan and process
+        plan_process_map = []
+        for assoc_plan_process in assoc_plan_processes:
+            plan_process_map.append(
+                {
+                    "plan": assoc_plan_process.plan.name,
+                    "process": assoc_plan_process.process.name,
+                    "ordinal": assoc_plan_process.ordinal,
+                }
+            )
+
         cloned_scenario = sample_content.clone(session)
         # Make sure that all links are also pointing back to the cloned scenario
         assert cloned_scenario.id == 2
@@ -356,6 +377,49 @@ class TestScenario(TestGeneral):
 
         for battery_type in cloned_scenario.battery_types:
             assert battery_type.scenario == cloned_scenario
+
+        # Check the plan process associations
+        assoc_plan_processes = (
+            session.query(AssocPlanProcess)
+            .filter(AssocPlanProcess.scenario == cloned_scenario)
+            .order_by(AssocPlanProcess.ordinal)
+            .all()
+        )
+
+        assert len(assoc_plan_processes) == 2
+        new_plan_process_map = []
+        for assoc_plan_process in assoc_plan_processes:
+            new_plan_process_map.append(
+                {
+                    "plan": assoc_plan_process.plan.name,
+                    "process": assoc_plan_process.process.name,
+                    "ordinal": assoc_plan_process.ordinal,
+                }
+            )
+
+        assert plan_process_map == new_plan_process_map
+
+        # Also check, that the old scenario is still intact
+        # Find the associations between plans and processes
+        assoc_plan_processes = (
+            session.query(AssocPlanProcess)
+            .filter(AssocPlanProcess.scenario == sample_content)
+            .order_by(AssocPlanProcess.ordinal)
+            .all()
+        )
+
+        assert len(assoc_plan_processes) == 2
+        # Remember the name of each plan and process
+        old_plan_process_map = []
+        for assoc_plan_process in assoc_plan_processes:
+            old_plan_process_map.append(
+                {
+                    "plan": assoc_plan_process.plan.name,
+                    "process": assoc_plan_process.process.name,
+                    "ordinal": assoc_plan_process.ordinal,
+                }
+            )
+        assert plan_process_map == old_plan_process_map
 
     def test_delete_scenario(self, session, sample_content):
         session.delete(sample_content)
