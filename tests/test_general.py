@@ -501,7 +501,7 @@ class TestVehicleType(TestGeneral):
             length=10,
             width=10,
             height=10,
-            empty_mass_kg=12000,
+            empty_mass=12000,
         )
         session.add(vehicle_type)
         session.commit()
@@ -587,7 +587,7 @@ class TestVehicleType(TestGeneral):
                     battery_capacity=100,
                     charging_curve=[[0, 150], [1, 150]],
                     opportunity_charging_capable=True,
-                    empty_mass_kg=empty_weight,
+                    empty_mass=empty_weight,
                 )
                 session.add(vehicle_type)
                 session.commit()
