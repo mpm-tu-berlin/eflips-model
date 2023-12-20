@@ -517,10 +517,10 @@ class VehicleType(Base):
         )
     )
 
-    empty_mass_kg: Mapped[float] = mapped_column(Float, nullable=True)
+    empty_mass: Mapped[float] = mapped_column(Float, nullable=True)
     """The empty mass of the vehicle in kg."""
-    empty_mass_kg_constraint = CheckConstraint("empty_mass_kg > 0")
-    _table_args_list.append(empty_mass_kg_constraint)
+    empty_mass_constraint = CheckConstraint("empty_mass > 0")
+    _table_args_list.append(empty_mass_constraint)
 
     consumption: Mapped[float] = mapped_column(Float, nullable=True)
     """
