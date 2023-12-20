@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-db"
-version = "1.0.0-rc2"
+version = "1.0.0-rc3"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
 	"Ludger Heide <ludger.heide@tu-berlin.de>",
