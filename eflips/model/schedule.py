@@ -174,12 +174,12 @@ def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
                 f"Trip {target.id} violates this."
             )
 
-        if sorted_stop_times[0].station != target.route.departure_station:
+        if sorted_stop_times[0].station_id != target.route.departure_station_id:
             raise ValueError(
                 "The first stop time of a trip must be the first stop of the route. "
                 f"Trip {target.id} violates this."
             )
-        if sorted_stop_times[-1].station != target.route.arrival_station:
+        if sorted_stop_times[-1].station_id != target.route.arrival_station_id:
             raise ValueError(
                 "The last stop time of a trip must be the last stop of the route. "
                 f"Trip {target.id} violates this."
@@ -199,7 +199,7 @@ def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
                     stop_time = sorted_stop_times.pop(0)
 
                     # There may be associated route stations without stop times
-                    while stop_time.station != assoc_route_station.station:
+                    while stop_time.station_id != assoc_route_station.station_id:
                         assoc_route_station = sorted_route_stations.pop(0)
             except IndexError as e:
                 raise ValueError(
