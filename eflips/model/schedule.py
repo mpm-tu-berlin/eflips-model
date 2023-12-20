@@ -174,15 +174,39 @@ def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
                 f"Trip {target.id} violates this."
             )
 
-        if sorted_stop_times[0].station_id != target.route.departure_station_id:
+        # For the station, we need to take care to either confirm by ID or by object, depending on which is available
+        if sorted_stop_times[0].station_id is not None:
+            if sorted_stop_times[0].station_id != target.route.departure_station_id:
+                raise ValueError(
+                    "The first stop time of a trip must be the first stop of the route. "
+                    f"Trip {target.id} violates this."
+                )
+        elif sorted_stop_times[0].station is not None:
+            if sorted_stop_times[0].station != target.route.departure_station:
+                raise ValueError(
+                    "The first stop time of a trip must be the first stop of the route. "
+                    f"Trip {target.id} violates this."
+                )
+        else:
             raise ValueError(
-                "The first stop time of a trip must be the first stop of the route. "
-                f"Trip {target.id} violates this."
+                "The stop time of a trip must have a station."
             )
-        if sorted_stop_times[-1].station_id != target.route.arrival_station_id:
+
+        if sorted_stop_times[-1].station_id is not None:
+            if sorted_stop_times[-1].station_id != target.route.arrival_station_id:
+                raise ValueError(
+                    "The last stop time of a trip must be the last stop of the route. "
+                    f"Trip {target.id} violates this."
+                )
+        elif sorted_stop_times[-1].station is not None:
+            if sorted_stop_times[-1].station != target.route.arrival_station:
+                raise ValueError(
+                    "The last stop time of a trip must be the last stop of the route. "
+                    f"Trip {target.id} violates this."
+                )
+        else:
             raise ValueError(
-                "The last stop time of a trip must be the last stop of the route. "
-                f"Trip {target.id} violates this."
+                "The stop time of a trip must have a station."
             )
 
         # Check that the order of the stop times is the same as the order of the stations in the route
@@ -199,8 +223,16 @@ def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
                     stop_time = sorted_stop_times.pop(0)
 
                     # There may be associated route stations without stop times
-                    while stop_time.station_id != assoc_route_station.station_id:
-                        assoc_route_station = sorted_route_stations.pop(0)
+                    if assoc_route_station.station_id is not None and stop_time.station_id is not None:
+                        while stop_time.station_id != assoc_route_station.station_id:
+                            assoc_route_station = sorted_route_stations.pop(0)
+                    elif assoc_route_station.station is not None and stop_time.station is not None:
+                        while stop_time.station != assoc_route_station.station:
+                            assoc_route_station = sorted_route_stations.pop(0)
+                    else:
+                        raise ValueError(
+                            "The stop time of a trip must have a station."
+                        )
             except IndexError as e:
                 raise ValueError(
                     "The order of the stop times of a trip must be the same as the order of the stations in the route. "
