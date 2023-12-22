@@ -4808,7 +4808,7 @@
             <rect x="1913" y="2099" width="122" height="30" fill="white"/>
             <rect x="1913" y="2099" width="122" height="30" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
             <text transform="translate(1918 2104.776)" fill="black">
-              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="40.44" y="15">type</tspan>
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="16.88" y="15">event_type</tspan>
             </text>
           </g>
           <g id="Graphic_1146">
