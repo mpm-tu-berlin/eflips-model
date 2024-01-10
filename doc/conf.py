@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "eFLIPS-DB"
+project = "eflips-model"
 copyright = "2023, Technische Universität Berlin"
 author = "Ludger Heide"
 release = "1.0.0-rc3"

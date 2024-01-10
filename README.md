@@ -1,7 +1,7 @@
-[![Unit Tests](https://github.com/mpm-tu-berlin/eflips-db/actions/workflows/unittests.yml/badge.svg)](https://github.com/mpm-tu-berlin/eflips-db/actions/workflows/unittests.yml) 
+[![Unit Tests](https://github.com/mpm-tu-berlin/eflips-model/actions/workflows/unittests.yml/badge.svg)](https://github.com/mpm-tu-berlin/eflips-model/actions/workflows/unittests.yml) 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-# eflips-db
+# eflips-model
 
 This repository contains both the *reference specification* and an *SQLALchemy implementation* of the eFLIPS database.
 
@@ -17,7 +17,7 @@ The SQLAlchemy implementation is located in the `eflips/db` directory. It is a P
 
 ### Installation
 
-Releases of the package will be made available on [https://pypi.org/](https://pypi.org/project/eflips-db/). As such, it is installable with `pip install eflips-db`. However, it should be used by including it in other packages as a dependency. The versioning scheme is [semantic versioning](https://semver.org/). This means that:
+Releases of the package will be made available on [https://pypi.org/](https://pypi.org/project/eflips-model/). As such, it is installable with `pip install eflips-model`. However, it should be used by including it in other packages as a dependency. The versioning scheme is [semantic versioning](https://semver.org/). This means that:
 
 - patch releases (e.g. `1.0.0` to `1.0.1`) are backwards compatible bug fixes, without schama changes
 - minor releases (e.g. `1.0.0` to `1.1.0`) are backwards compatible feature additions, with the schema changes being optional
