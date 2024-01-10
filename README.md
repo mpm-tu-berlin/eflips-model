@@ -40,7 +40,7 @@ dependencies to be installed on the system.
 
 ### Documentation
 
-The documentation is generated using [sphtinx](https://www.sphinx-doc.org/en/master/). To generate the documentation,
+The documentation is generated using [sphinx](https://www.sphinx-doc.org/en/master/). To generate the documentation,
 execute the following command in the root directory of the repository:
 
 ```bash
