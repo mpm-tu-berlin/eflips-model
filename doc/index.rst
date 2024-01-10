@@ -1,9 +1,9 @@
-.. eFLIPS-DB documentation master file, created by
+.. eflips-model documentation master file, created by
    sphinx-quickstart on Mon Nov 27 16:01:20 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to eFLIPS-DB's documentation!
+Welcome to eflips-model's documentation!
 =====================================
 
 .. toctree::

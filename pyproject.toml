@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "eflips-db"
+name = "eflips-model"
 version = "1.0.0-rc3"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
@@ -8,8 +8,8 @@ authors = [
 ]
 readme = "README.md"
 license = "AGPL-3.0-or-later"
-homepage = "https://github.com/mpm-tu-berlin/eflips-db"
-repository = "https://github.com/mpm-tu-berlin/eflips-db"
+homepage = "https://github.com/mpm-tu-berlin/eflips-model"
+repository = "https://github.com/mpm-tu-berlin/eflips-model"
 packages = [{ include = "eflips/model" }]
 include= ["LICENSE.md"]
 

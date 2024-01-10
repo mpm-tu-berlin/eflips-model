@@ -38,7 +38,7 @@ class TestGeneral:
     def scenario(self, session):
         """
         Creates a scenario
-        :param session: An SQLAlchemy Session with the eflips-db schema
+        :param session: An SQLAlchemy Session with the eflips-model schema
         :return: A :class:`Scenario` object
         """
         scenario = Scenario(name="Test Scenario")
@@ -50,7 +50,7 @@ class TestGeneral:
     def sample_content(self, session):
         """
         Creates a scenario that comes filled with sample content for each type
-        :param session: An SQLAlchemy Session with the eflips-db schema
+        :param session: An SQLAlchemy Session with the eflips-model schema
         :return: A :class:`Scenario` object
         """
 
@@ -319,9 +319,9 @@ class TestGeneral:
     @pytest.fixture()
     def session(self):
         """
-        Creates a session with the eflips-db schema
+        Creates a session with the eflips-model schema
         NOTE: THIS DELETE ALL DATA IN THE DATABASE
-        :return: an SQLAlchemy Session with the eflips-db schema
+        :return: an SQLAlchemy Session with the eflips-model schema
         """
         url = os.environ["DATABASE_URL"]
         engine = create_engine(
