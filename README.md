@@ -13,7 +13,7 @@ The reference specification is located (for now) in the huge SVG file [`schema.s
 
 ## SQLAlchemy Implementation
 
-The SQLAlchemy implementation is located in the `eflips/db` directory. It is a Python package that contains the SQLAlchemy models and the database migration scripts. The package is structured as follows:
+The SQLAlchemy implementation is located in the `eflips/model` directory. It is a Python package that contains the SQLAlchemy models and the database migration scripts. The package is structured as follows:
 
 ### Installation
 
