@@ -131,7 +131,7 @@ class Area(Base):
     """The type of the area. See :class:`depot.AreaType`."""
 
     name: Mapped[str] = mapped_column(Text, nullable=True)
-    """An optional name for the area."""
+    """An optional name for the area. If set, it must be unique within the scenario."""
     _table_args_list.append(UniqueConstraint(scenario_id, name))
 
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
@@ -186,7 +186,7 @@ class Process(Base):
     """The scenario."""
 
     name: Mapped[str] = mapped_column(Text)
-    """A name for the process."""
+    """A name for the process. If set, it must be unique within the scenario."""
     _table_args_list.append(UniqueConstraint(scenario_id, name))
 
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
