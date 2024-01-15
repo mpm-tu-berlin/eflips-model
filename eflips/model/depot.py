@@ -12,6 +12,8 @@ from sqlalchemy import (
     Integer,
     Interval,
     Text,
+    UniqueConstraint,
+    Constraint,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -104,7 +106,7 @@ class Area(Base):
 
     __tablename__ = "Area"
 
-    _table_args_list = []
+    _table_args_list: List[Constraint] = []
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the area. Auto-incremented."""
@@ -130,6 +132,7 @@ class Area(Base):
 
     name: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional name for the area."""
+    _table_args_list.append(UniqueConstraint(scenario_id, name))
 
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the area."""
@@ -172,6 +175,8 @@ class Process(Base):
 
     __tablename__ = "Process"
 
+    _table_args_list: List[Constraint] = []
+
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the process. Auto-incremented."""
 
@@ -182,6 +187,8 @@ class Process(Base):
 
     name: Mapped[str] = mapped_column(Text)
     """A name for the process."""
+    _table_args_list.append(UniqueConstraint(scenario_id, name))
+
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the process."""
 
@@ -214,15 +221,18 @@ class Process(Base):
         back_populates="processes",
     )
 
-    __table_args__ = (
+    # This constraint verifies that the process actually does something
+    _table_args_list.append(
         CheckConstraint(
             "(duration IS NULL) OR"
             "(duration IS NOT NULL AND duration >= '00:00:00') OR"
             "(electric_power IS NULL) OR"
             "(electric_power IS NOT NULL AND electric_power >= 0)",
             name="positive_duration_and_power_check",
-        ),
+        )
     )
+
+    __table_args__ = tuple(_table_args_list)
 
 
 class AssocPlanProcess(Base):
