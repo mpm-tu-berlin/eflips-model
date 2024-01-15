@@ -687,6 +687,9 @@ class EventType(PyEnum):
     SERVICE = auto()
     """Service at a depot. Probably, the description field should be used to specify the type of service."""
 
+    STANDBY = auto()
+    """Standing in the depot while waiting for something. Not yet ready for departure."""
+
     STANDBY_DEPARTURE = auto()
     """Ready for departure from a depot."""
 
