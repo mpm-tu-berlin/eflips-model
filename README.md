@@ -9,7 +9,7 @@ This repository contains both the *reference specification* and an *SQLALchemy i
 
 ## Reference Specification
 
-The reference specification is located (for now) in the huge SVG file [`schema.svg`](schema.svg). It is a UML diagram of the database schema. The diagram was created using [OmniGraffle](https://www.omnigroup.com/omnigraffle) (proprietary).
+The reference specification is located (for now) in the huge PDF file [`schema.pdf`](schema.pdf). It is a UML diagram of the database schema. The diagram was created using [OmniGraffle](https://www.omnigroup.com/omnigraffle) (proprietary).
 
 ## SQLAlchemy Implementation
 
