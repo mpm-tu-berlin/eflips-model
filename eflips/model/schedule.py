@@ -168,11 +168,22 @@ def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
                 "The arrival time of the first stop time of a trip must be the departure time of the trip. "
                 f"Trip {target.id} violates this."
             )
-        if sorted_stop_times[-1].arrival_time != target.arrival_time:
-            raise ValueError(
-                "The arrival time of the last stop time of a trip must be the arrival time of the trip. "
-                f"Trip {target.id} violates this."
-            )
+        if sorted_stop_times[-1].dwell_duration is None:
+            if sorted_stop_times[-1].arrival_time != target.arrival_time:
+                raise ValueError(
+                    "The arrival time of the last stop time of a trip must be the arrival time of the trip. "
+                    f"Trip {target.id} violates this."
+                )
+        else:
+            if (
+                sorted_stop_times[-1].arrival_time
+                + sorted_stop_times[-1].dwell_duration
+                != target.arrival_time
+            ):
+                raise ValueError(
+                    "The arrival time of the last stop time of a trip must be the arrival time of the trip. "
+                    f"Trip {target.id} violates this."
+                )
 
         # For the station, we need to take care to either confirm by ID or by object, depending on which is available
         if sorted_stop_times[0].station_id is not None:
