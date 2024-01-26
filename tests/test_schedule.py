@@ -196,7 +196,6 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.departure_station,
                 arrival_time=trip.departure_time,
-                dwell_duration=timedelta(minutes=1),
             )
         )
 
@@ -206,7 +205,6 @@ class TestTripAndStopTime(TestGeneral):
                 trip=trip,
                 station=trip.route.arrival_station,
                 arrival_time=trip.arrival_time - timedelta(minutes=1),
-                dwell_duration=timedelta(minutes=1),
             )
         )
         trip.stop_times = stop_times
