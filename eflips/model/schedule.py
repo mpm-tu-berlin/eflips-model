@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
 from typing import Any, List, TYPE_CHECKING
@@ -279,6 +280,14 @@ class Rotation(Base):
     """A list of trips."""
 
 
+class ConsistencyWarning(UserWarning):
+    """
+    A warning that is raised when a consistency check fails.
+    """
+
+    pass
+
+
 @event.listens_for(Rotation, "before_insert")
 @event.listens_for(Rotation, "before_update")
 def check_rotation_before_commit(_: Any, __: Any, target: Rotation) -> None:
@@ -296,14 +305,16 @@ def check_rotation_before_commit(_: Any, __: Any, target: Rotation) -> None:
             target.trips[i].route.arrival_station
             != target.trips[i + 1].route.departure_station
         ):
-            raise ValueError(
+            warnings.warn(
                 "The end station of a trip must be the start station of the next trip. "
-                f"Rotation {target.id} violates this."
+                f"Rotation {target.id} violates this.",
+                ConsistencyWarning,
             )
 
         # Check for temporal continuity
         if target.trips[i].arrival_time > target.trips[i + 1].departure_time:
-            raise ValueError(
+            warnings.warn(
                 "The departure time of a trip must be after the arrival time of the previous trip. "
-                f"Rotation {target.id} violates this."
+                f"Rotation {target.id} violates this.",
+                ConsistencyWarning,
             )

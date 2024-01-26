@@ -33,3 +33,5 @@ from eflips.model.depot import Area as Area
 from eflips.model.depot import AreaType as AreaType
 from eflips.model.depot import Process as Process
 from eflips.model.depot import AssocPlanProcess as AssocPlanProcess
+
+from eflips.model.schedule import ConsistencyWarning as ConsistencyWarning

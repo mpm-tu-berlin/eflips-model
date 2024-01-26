@@ -13,6 +13,7 @@ from eflips.model import (
     Trip,
     TripType,
     VehicleType,
+    ConsistencyWarning,
 )
 from test_general import TestGeneral
 
@@ -565,7 +566,7 @@ class TestRotation(TestGeneral):
         )
         session.add(vehicle_type)
 
-        with pytest.raises(ValueError):
+        with pytest.warns(ConsistencyWarning):
             rotation = Rotation(
                 scenario=scenario,
                 trips=trips,
