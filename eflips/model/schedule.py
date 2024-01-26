@@ -70,7 +70,6 @@ class StopTime(Base):
         UniqueConstraint(
             "trip_id", "arrival_time", name="stop_time_arrival_unique_constraint"
         ),
-        UniqueConstraint("trip_id", "station_id", name="stop_trip_unique_constraint"),
     )
 
 
