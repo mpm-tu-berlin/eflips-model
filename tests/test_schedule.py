@@ -541,7 +541,7 @@ class TestRotation(TestGeneral):
         )
         session.add(vehicle_type)
 
-        with pytest.raises(ValueError):
+        with pytest.warns(ConsistencyWarning):
             rotation = Rotation(
                 scenario=scenario,
                 trips=trips,
