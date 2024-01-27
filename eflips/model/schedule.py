@@ -287,7 +287,9 @@ class Rotation(Base):
     name: Mapped[str] = mapped_column(Text, nullable=True)
     """The name of the rotation."""
 
-    trips: Mapped[List["Trip"]] = relationship("Trip", back_populates="rotation")
+    trips: Mapped[List["Trip"]] = relationship(
+        "Trip", back_populates="rotation", order_by="Trip.departure_time"
+    )
     """A list of trips."""
 
 
