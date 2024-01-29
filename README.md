@@ -3,9 +3,14 @@
 
 # eflips-model
 
+---
+
+Part of the [eFLIPS/simBA](https://github.com/stars/ludgerheide/lists/ebus2030) list of projects.
+
+---
+
+
 This repository contains both the *reference specification* and an *SQLALchemy implementation* of the eFLIPS database.
-
-
 
 ## Reference Specification
 
@@ -25,7 +30,7 @@ Releases of the package will be made available on [https://pypi.org/](https://py
 
 Supported database backends are
 
-- [PostgreSQL](https://www.postgresql.org) with the [PostGIS](https://postgis.net/) extension
+- [PostgreSQL](https://www.postgresql.org) with the [PostGIS](https://postgis.net/) extension (`CREATE EXTENSION postgis;`)
   and `btree_gist` (`CREATE EXTENSION btree_gist;`)
 
 ### Usage
@@ -33,10 +38,26 @@ Supported database backends are
 This package is not expected to be used directly. It is a dependency of the `eflips-*` packages.
 
 This package utilizes GIS extensions through [GeoAlchemy](https://geoalchemy-2.readthedocs.io/en/latest/index.html).
-However, we are not handling geometry on the python side in any special way. You will probably additionally
+However, we are not handling geometry on the python side in any special way. When developing a paclage that uses `eflips-model`, you will probably additionally
 need [Shapely](https://shapely.readthedocs.io/en/stable/manual.html)
 and [pyProj](https://pyproj4.github.io/pyproj/stable/), which are not pure python packages and require additional
 dependencies to be installed on the system.
+
+#### Testing
+
+We use [pytest](https://docs.pytest.org/en/stable/) for testing. The tests are located in the `tests` directory. To run the tests, execute the following command in the root directory of the repository (after installing the `dev` dependencies):
+
+---
+
+**NOTE**: Be aware that the tests will clear the database specified in the `DATABASE_URL` environment variable. Make sure that you are not using a database that you want to keep.
+
+---
+ 
+```bash
+# Change to your database URL
+export DATABASE_URL=postgresql://user:pass@hostname:port/dbname 
+pytest
+```
 
 ### Documentation
 
@@ -71,24 +92,12 @@ We recommend utilizing linters such as [PyLint](https://pylint.readthedocs.io/en
 analysis (but not
 doing everything it says blindly).
 
-#### Testing
-
-We use [pytest](https://docs.pytest.org/en/stable/) for testing. The tests are located in the `tests` directory. To run the tests, execute the following command in the root directory of the repository (after installing the `dev` dependencies):
-
----
-
-**NOTE**: Be aware that the tests will clear the database specified in the `DATABASE_URL` environment variable. Make sure that you are not using a database that you want to keep.
-
----
- 
-```bash
-# Change to your database URL
-export DATABASE_URL=postgresql://user:pass@hostname:port/dbname 
-pytest
-```
-
 ## License
 
 This project is licensed under the AGPLv3 license - see the [LICENSE](LICENSE.md) file for details.
+
+## Funding Notice
+
+This code was developed as part of the project [eBus2030+](https://www.eflip.de/) funded by the Federal German Ministry for Digital and Transport (BMDV) under grant number 03EMF0402.
 
 
