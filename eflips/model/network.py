@@ -262,10 +262,8 @@ class Station(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """The short name of the station (if available)."""
 
-    geom: Mapped[Geometry] = mapped_column(
-        Geometry("POINTZ", srid=4326), nullable=False
-    )
-    """The location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
+    geom: Mapped[Geometry] = mapped_column(Geometry("POINTZ", srid=4326), nullable=True)
+    """The (optional) location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
 
     is_electrified = mapped_column(Boolean, nullable=False)
     """
