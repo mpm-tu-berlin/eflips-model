@@ -523,6 +523,11 @@ class VehicleType(Base):
     empty_mass_constraint = CheckConstraint("empty_mass > 0")
     _table_args_list.append(empty_mass_constraint)
 
+    allowed_mass: Mapped[float] = mapped_column(Float, nullable=True)
+    """The allowed payload mass of the vehicle in kg. The total mass of the vehicle is empty_mass + allowed_mass."""
+    allowed_mass_constraint = CheckConstraint("allowed_mass > 0")
+    _table_args_list.append(allowed_mass_constraint)
+
     consumption: Mapped[float] = mapped_column(Float, nullable=True)
     """
     The vehicle's energy consumption in kWh/km. This is used to calculate the energy consumption of a trip. Can
