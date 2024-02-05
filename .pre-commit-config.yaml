@@ -21,6 +21,10 @@ repos:
     rev: 'v1.8.0'  # Use the sha / tag you want to point at
     hooks:
       - id: mypy
-        exclude: ^tests/
+        exclude: |
+          (?x)^(
+              eflips/model/migrations/.*|
+              tests/.*
+          )$
         args: [ --explicit-package-bases, --ignore-missing-imports ]
 
