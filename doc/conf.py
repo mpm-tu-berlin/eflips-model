@@ -7,9 +7,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "eflips-model"
-copyright = "2023, Technische Universität Berlin"
+copyright = "2024, Technische Universität Berlin"
 author = "Ludger Heide"
-release = "1.1.6"
+release = "2.0.0"
 
 
 # -- General configuration ---------------------------------------------------
