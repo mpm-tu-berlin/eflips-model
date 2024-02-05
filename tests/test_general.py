@@ -29,6 +29,7 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
+    setup_database,
 )
 from eflips.model.general import AssocVehicleTypeVehicleClass
 
@@ -328,7 +329,7 @@ class TestGeneral:
             url, echo=False
         )  # Change echo to True to see SQL queries
         Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
+        setup_database(engine)
         session = Session(bind=engine)
         yield session
         session.close()

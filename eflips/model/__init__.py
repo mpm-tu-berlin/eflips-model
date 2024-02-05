@@ -1,8 +1,37 @@
+import importlib
+
+import sqlalchemy
 from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
     pass
+
+
+def setup_database(engine: sqlalchemy.Engine) -> None:
+    """
+    Use this method to create a new database from scratch.
+
+    This method will create all tables and set the alembric version to the latest version, based on this howto:
+    https://alembic.sqlalchemy.org/en/latest/cookbook.html#building-an-up-to-date-database-from-scratch
+
+    :param engine: The engine to use to connect to the database.
+
+    :return: None
+    """
+    Base.metadata.create_all(engine)
+
+    from alembic.config import Config
+    from alembic import command
+
+    alembic_cfg = Config(
+        str(importlib.resources.files("eflips.model").joinpath("alembic.ini"))
+    )
+    alembic_cfg.set_main_option(
+        "script_location",
+        str(importlib.resources.files("eflips.model").joinpath("migrations")),
+    )
+    command.stamp(alembic_cfg, "head")
 
 
 # Strict re-exports make MyPy happy
