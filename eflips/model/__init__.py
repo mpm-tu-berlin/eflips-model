@@ -27,6 +27,7 @@ def setup_database(engine: sqlalchemy.Engine) -> None:
     alembic_cfg = Config(
         str(importlib.resources.files("eflips.model").joinpath("alembic.ini"))
     )
+    alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
     alembic_cfg.set_main_option(
         "script_location",
         str(importlib.resources.files("eflips.model").joinpath("migrations")),
