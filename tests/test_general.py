@@ -982,5 +982,23 @@ class TestEvent(TestGeneral):
             soc_end=0.5,
         )
         session.add(event_1)
-        with pytest.raises(sqlalchemy.exc.DataError):
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            session.commit()
+
+    def test_create_zero_event(self, session, sample_content):
+        # An event with a negative duration should not be allowed
+        event_1 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().arrival_time,
+            time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+        session.add(event_1)
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
             session.commit()

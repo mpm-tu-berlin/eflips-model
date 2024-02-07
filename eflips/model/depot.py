@@ -127,7 +127,7 @@ class Area(Base):
     )
     """The vehicle type which can park in this area."""
 
-    area_type = mapped_column(SqlEnum(AreaType))
+    area_type = mapped_column(SqlEnum(AreaType, native_enum=False))
     """The type of the area. See :class:`depot.AreaType`."""
 
     name: Mapped[str] = mapped_column(Text, nullable=True)

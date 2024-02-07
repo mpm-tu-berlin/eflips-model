@@ -775,7 +775,9 @@ class Event(Base):
     soc_end: Mapped[float] = mapped_column(Float, nullable=False)
     """The state of charge at the end of the event. This should refer to the net battery capacity."""
 
-    event_type: Mapped[EventType] = mapped_column(SqlEnum(EventType), nullable=False)
+    event_type: Mapped[EventType] = mapped_column(
+        SqlEnum(EventType, native_enum=False), nullable=False
+    )
     """The type of the event."""
 
     description: Mapped[str] = mapped_column(Text, nullable=True)
@@ -809,4 +811,5 @@ class Event(Base):
             "(trip_id IS NOT NULL AND subloc_no IS NULL AND event_type IN ('DRIVING'))",
             name="filled_fields_type_combination",
         ),
+        CheckConstraint("time_start < time_end", name="duration_positive"),
     )
