@@ -291,7 +291,7 @@ class Station(Base):
     The total power of the charging infrastructure in kW. If `is_electrified` is true, this must be set.
     """
 
-    charge_type = mapped_column(SqlEnum(ChargeType), nullable=True)
+    charge_type = mapped_column(SqlEnum(ChargeType, native_enum=False), nullable=True)
     """
     The type of charging infrastructure. If `is_electrified` is true, this must be set. 
     
@@ -299,7 +299,9 @@ class Station(Base):
     simBA runs.
     """
 
-    voltage_level = mapped_column(SqlEnum(VoltageLevel), nullable=True)
+    voltage_level = mapped_column(
+        SqlEnum(VoltageLevel, native_enum=False), nullable=True
+    )
     """
     The voltage level of the charging infrastructure. If `is_electrified` is true, this must be set.
     """

@@ -120,7 +120,7 @@ class Trip(Base):
     )
     """The arrival time at the last station."""
 
-    trip_type = mapped_column(SqlEnum(TripType), nullable=False)
+    trip_type = mapped_column(SqlEnum(TripType, native_enum=False), nullable=False)
     """The type of the trip. Either `EMPTY` or `PASSENGER`."""
 
     loaded_mass = mapped_column(Float, nullable=True)
