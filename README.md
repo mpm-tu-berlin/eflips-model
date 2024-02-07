@@ -43,7 +43,27 @@ need [Shapely](https://shapely.readthedocs.io/en/stable/manual.html)
 and [pyProj](https://pyproj4.github.io/pyproj/stable/), which are not pure python packages and require additional
 dependencies to be installed on the system.
 
-#### Testing
+#### Schema updates
+
+The schema updates are handled by [Alembic](https://alembic.sqlalchemy.org/en/latest/). The migration scripts are located in the `eflips/model/migrations` directory. To create a new migration script, execute the following commands in the root directory of the repository:
+
+```bash
+cd eflips/model
+alembic revision --autogenerate -m "vx.y.z"
+# Edit the migration script, as necessary
+```
+
+**Creating a migration script is required for every change to the database schema, which should also correspond to a minor or major version change in the package version.**
+
+To apply the migration scripts, execute the following command in the root directory of the repository:
+
+```bash
+cd eflips/model
+export DATABASE_URL=postgresql://user:pass@hostname:port/dbname # Change to your database URL
+alembic upgrade head
+```
+
+### Testing
 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing. The tests are located in the `tests` directory. To run the tests, execute the following command in the root directory of the repository (after installing the `dev` dependencies):
 

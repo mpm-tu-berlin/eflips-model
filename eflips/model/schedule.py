@@ -123,8 +123,8 @@ class Trip(Base):
     trip_type = mapped_column(SqlEnum(TripType), nullable=False)
     """The type of the trip. Either `EMPTY` or `PASSENGER`."""
 
-    level_of_loading = mapped_column(Float, nullable=True)
-    """The level of loading of the bus. This is a mass in kg."""
+    loaded_mass = mapped_column(Float, nullable=True)
+    """The level of load on the bus in kg."""
 
     stop_times: Mapped[List["StopTime"]] = relationship(
         "StopTime", back_populates="trip", order_by="StopTime.arrival_time"
