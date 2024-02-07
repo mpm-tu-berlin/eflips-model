@@ -793,7 +793,7 @@ class Event(Base):
         ExcludeConstraint(  # type: ignore
             (Column("scenario_id"), "="),
             (Column("vehicle_id"), "="),
-            (func.tstzrange(Column("time_start"), Column("time_end"), "[]"), "&&"),
+            (func.tstzrange(Column("time_start"), Column("time_end"), "()"), "&&"),
             name="scenario_id_time_range_excl",
             using="gist",
         ),

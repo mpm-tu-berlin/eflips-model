@@ -832,8 +832,8 @@ class TestEvent(TestGeneral):
         session.add(event_2)
         session.commit()
 
-    def test_create_overlapping_events(self, session, sample_content):
-        # Overlapping events for the same type are allowed, since that may very well be different vehicles
+    def test_create_truly_overlapping_events(self, session, sample_content):
+        # Creating an event which ends after the next event starts should not be allowed
         event_1 = Event(
             scenario=session.query(Scenario).first(),
             station=session.query(Station).first(),
@@ -866,3 +866,121 @@ class TestEvent(TestGeneral):
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             session.commit()
         session.rollback()
+
+        # Also create an event wholly contained within another event
+        event_1 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        event_2 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().departure_time
+            + timedelta(minutes=1),
+            time_end=session.query(Trip).first().arrival_time - timedelta(minutes=1),
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        session.add(event_1)
+        session.add(event_2)
+
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            session.commit()
+        session.rollback()
+
+    def test_create_overlapping_events(self, session, sample_content):
+        # Creating an event with its start time being exactly the same as the end time of another event should not be allowed
+        event_1 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        event_2 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().arrival_time,
+            time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        session.add(event_1)
+        session.add(event_2)
+        session.commit()
+
+        # Howeever, if we move the end of the first event forward by even one microsecond, it should not be allowed
+        event_3 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time
+            + timedelta(microseconds=1),
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        event_4 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().arrival_time,
+            time_end=session.query(Trip).first().arrival_time + timedelta(minutes=10),
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        session.add(event_3)
+        session.add(event_4)
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            session.commit()
+
+    def test_create_negative_event(self, session, sample_content):
+        # An event with a negative duration should not be allowed
+        event_1 = Event(
+            scenario=session.query(Scenario).first(),
+            station=session.query(Station).first(),
+            subloc_no=1,
+            vehicle_type=session.query(VehicleType).first(),
+            vehicle=session.query(Vehicle).first(),
+            event_type=EventType.CHARGING_OPPORTUNITY,
+            time_start=session.query(Trip).first().arrival_time,
+            time_end=session.query(Trip).first().departure_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+        session.add(event_1)
+        with pytest.raises(sqlalchemy.exc.DataError):
+            session.commit()
