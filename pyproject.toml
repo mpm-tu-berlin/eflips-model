@@ -12,7 +12,6 @@ homepage = "https://github.com/mpm-tu-berlin/eflips-model"
 repository = "https://github.com/mpm-tu-berlin/eflips-model"
 packages = [{ include = "eflips/model" }]
 include= ["LICENSE.md"]
-exclude = ["examples"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
