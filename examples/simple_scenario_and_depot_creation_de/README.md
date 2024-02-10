@@ -17,8 +17,8 @@ Vor Ausführung des Notebooks wird empfohlen, ein eigenes Virtual Environment f�
 Da ```eflips-model``` nur über PyPI beziehbar ist, kann es nicht direkt mit Conda usw. benutzt werden.
 Daher stattdessen bitte bspw. `pip` verwenden (d.h. `Virtualenv` o.Ä. für das Environment nutzen).
 
-Um das Notebook auszuführen, wird Jupyter Lab benötigt. Dieses kann mit `pip install jupyterlab` im verwendeten Environment installiert werden.
+Um das Notebook auszuführen, wird Jupyter Lab benötigt. Dieses kann (wenn Virtualenv verwendet wird) mit `pip install jupyterlab` im verwendeten Environment installiert werden.
 
 Starten von Jupyter Lab mit
 ```jupyter lab```
-und dort die `example_scenario.ipynb` über den Dateiexplorer rechts öffnen
+und dort die `example_scenario.ipynb` im entsprechenden Ordner über den Dateiexplorer links öffnen
