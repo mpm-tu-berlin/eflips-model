@@ -10,7 +10,7 @@ Part of the [eFLIPS/simBA](https://github.com/stars/ludgerheide/lists/ebus2030) 
 ---
 
 
-This repository contains both the *reference specification* and an *SQLALchemy implementation* of the eFLIPS database.
+This repository contains both the *reference specification*, an *SQLALchemy implementation* and a *usage example* of the eFLIPS database.
 
 ## Reference Specification
 
@@ -111,6 +111,11 @@ install pre-commit, execute the following command in the root directory of the r
 We recommend utilizing linters such as [PyLint](https://pylint.readthedocs.io/en/latest/index.html) for static code
 analysis (but not
 doing everything it says blindly).
+
+
+## Usage Example
+
+In [examples](examples/) a well-documented (german-language) [Jupyter](https://jupyter.org/) notebook can be found that explains how all pieces of the data structure fit together using the SQLAlchemy Implementation. See its [README](examples/simple_scenario_and_depot_creation_de/README.md) for details.
 
 ## License
 
