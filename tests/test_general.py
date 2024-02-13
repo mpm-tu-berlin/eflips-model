@@ -425,10 +425,18 @@ class TestScenario(TestGeneral):
         # Make sure the StopTimes are also cloned
         assert (
             session.query(StopTime).filter(StopTime.scenario == sample_content).count()
-            == session.query(StopTime)
-            .filter(StopTime.scenario == cloned_scenario)
-            .count()
+            == 90
         )
+        assert (
+            session.query(StopTime).filter(StopTime.scenario == cloned_scenario).count()
+            == 90
+        )
+        for stop_time in session.query(StopTime).filter(
+            StopTime.scenario == cloned_scenario
+        ):
+            assert stop_time.scenario == cloned_scenario
+            assert stop_time.trip.scenario == cloned_scenario
+            assert stop_time.station.scenario == cloned_scenario
 
     def test_delete_scenario(self, session, sample_content):
         session.delete(sample_content)
@@ -442,17 +450,20 @@ class TestScenario(TestGeneral):
         assert session.query(Scenario).count() == 2
         assert session.query(VehicleType).count() == 4
         assert session.query(BatteryType).count() == 2
+        assert session.query(StopTime).count() == 180
         session.delete(cloned_scenario)
         session.commit()
         assert session.query(Scenario).count() == 1
         assert session.query(VehicleType).count() == 2
         assert session.query(BatteryType).count() == 1
+        assert session.query(StopTime).count() == 90
 
     def test_delete_parent_scenario(self, session, sample_content):
         cloned_scenario = sample_content.clone(session)
         assert session.query(Scenario).count() == 2
         assert session.query(VehicleType).count() == 4
         assert session.query(BatteryType).count() == 2
+        assert session.query(StopTime).count() == 180
 
         # For some reason, we need to commit the child scenario first
         session.commit()
@@ -461,6 +472,7 @@ class TestScenario(TestGeneral):
         assert session.query(Scenario).count() == 1
         assert session.query(VehicleType).count() == 2
         assert session.query(BatteryType).count() == 1
+        assert session.query(StopTime).count() == 90
 
     def test_create_scenario_with_parent(self, session):
         parent = Scenario(name="Parent Scenario")

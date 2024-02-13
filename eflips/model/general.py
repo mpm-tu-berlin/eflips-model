@@ -236,6 +236,12 @@ class Scenario(Base):
                 self._copy_object(route_station, session, scenario_copy)
                 route_station_id_map[original_id] = route_station
 
+            stop_time_id_map: Dict[int, "StopTime"] = {}
+            for stop_time in self.stop_times:
+                original_id = stop_time.id
+                self._copy_object(stop_time, session, scenario_copy)
+                stop_time_id_map[original_id] = stop_time
+
             trip_id_map: Dict[int, "Trip"] = {}
             for trip in self.trips:
                 original_id = trip.id
@@ -339,10 +345,10 @@ class Scenario(Base):
                 route_station.route_id = route_id_map[route_station.route_id].id
             route_station.station_id = station_id_map[route_station.station_id].id
 
-        # Station <-> StopTime, trips_departing, trips_arriving
-        for station in scenario_copy.stations:
-            for stop_time in station.stop_times:
-                stop_time.station_id = station_id_map[stop_time.station_id].id
+        # Station <-> StopTime <-> Trip
+        for stop_time in scenario_copy.stop_times:
+            stop_time.station_id = station_id_map[stop_time.station_id].id
+            stop_time.trip_id = trip_id_map[stop_time.trip_id].id
 
         # Trip <-> Route
         for trip in scenario_copy.trips:
@@ -351,11 +357,6 @@ class Scenario(Base):
         # Trip <-> Rotation
         for trip in scenario_copy.trips:
             trip.rotation_id = rotation_id_map[trip.rotation_id].id
-
-        # Trip <-> StopTime
-        for trip in scenario_copy.trips:
-            for stop_time in trip.stop_times:
-                stop_time.trip_id = trip_id_map[stop_time.trip_id].id
 
         # Rotation <-> VehicleType
         for rotation in scenario_copy.rotations:

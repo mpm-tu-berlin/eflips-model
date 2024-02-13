@@ -68,8 +68,13 @@ class StopTime(Base):
             "dwell_duration >= '0 seconds'",
             name="stop_time_dwell_duration_positive_check",
         ),
+        # While the trip_id should not be duplicated, during copying we can have the same trip_id, but in a different
+        # scenario (before we update the trip_id to the trip_id in the new scenario)
         UniqueConstraint(
-            "trip_id", "arrival_time", name="stop_time_arrival_unique_constraint"
+            "trip_id",
+            "arrival_time",
+            "scenario_id",
+            name="stop_time_arrival_unique_constraint",
         ),
     )
 
