@@ -422,6 +422,14 @@ class TestScenario(TestGeneral):
             )
         assert plan_process_map == old_plan_process_map
 
+        # Make sure the StopTimes are also cloned
+        assert (
+            session.query(StopTime).filter(StopTime.scenario == sample_content).count()
+            == session.query(StopTime)
+            .filter(StopTime.scenario == cloned_scenario)
+            .count()
+        )
+
     def test_delete_scenario(self, session, sample_content):
         session.delete(sample_content)
         session.commit()
