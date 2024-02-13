@@ -114,7 +114,9 @@ class Route(Base):
     """The trips."""
 
     assoc_route_stations: Mapped[List["AssocRouteStation"]] = relationship(
-        "AssocRouteStation", back_populates="route"
+        "AssocRouteStation",
+        back_populates="route",
+        order_by="AssocRouteStation.elapsed_distance",
     )
     """The associated route stations. This contains metadata about the stops on the route, such as the partial distance."""
 
