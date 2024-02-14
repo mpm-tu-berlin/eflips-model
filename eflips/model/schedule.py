@@ -105,7 +105,9 @@ class Trip(Base):
     scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="trips")
     """The scenario."""
 
-    route_id: Mapped[int] = mapped_column(ForeignKey("Route.id"), nullable=False)
+    route_id: Mapped[int] = mapped_column(
+        ForeignKey("Route.id"), nullable=False, index=True
+    )
     """The unique identifier of the route. Foreign key to :attr:`Route.id`."""
     route: Mapped["Route"] = relationship("Route", back_populates="trips")
     """The route."""
