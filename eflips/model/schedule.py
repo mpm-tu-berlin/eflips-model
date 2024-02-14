@@ -110,18 +110,20 @@ class Trip(Base):
     route: Mapped["Route"] = relationship("Route", back_populates="trips")
     """The route."""
 
-    rotation_id: Mapped[int] = mapped_column(ForeignKey("Rotation.id"), nullable=False)
+    rotation_id: Mapped[int] = mapped_column(
+        ForeignKey("Rotation.id"), nullable=False, index=True
+    )
     """The unique identifier of the rotation. Foreign key to :attr:`Rotation.id`."""
     rotation: Mapped["Rotation"] = relationship("Rotation", back_populates="trips")
     """The rotation."""
 
     departure_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+        DateTime(timezone=True), nullable=False, index=True
     )
     """The departure time at the first station."""
 
     arrival_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+        DateTime(timezone=True), nullable=False, index=True
     )
     """The arrival time at the last station."""
 
