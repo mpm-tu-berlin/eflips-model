@@ -83,6 +83,9 @@ class Scenario(Base):
     )
     """The task id of the simulation. Automatically set to a UUID when a scenario is submitted for simulation."""
 
+    manager_id: Mapped[int] = mapped_column(Integer, nullable=True)
+    """The unique identifier of the manager. Only used in the `django.simba` project."""
+
     # Most of the other columns (all except the Assoc-Tables for many-to-many relationships) have the scenario_id
     # as a foreign key. They are mapped below.
     vehicle_types: Mapped[List["VehicleType"]] = relationship(
