@@ -45,10 +45,9 @@ class Depot(Base):
     """An optional short name for the depot."""
 
     station_id: Mapped[int] = mapped_column(ForeignKey("Station.id"))
-    """The station where the depot is located. This depot handles `Rotation`s starting and ending at this station. 
-    Foreign key to :attr:`Station.id`. Unique because a station can have only one depot."""
+    """The station where the depot is located. This depot handles :attr:`Rotation` starting and ending at this station. Foreign key to :attr:`Station.id`."""
     station: Mapped["Station"] = relationship("Station", back_populates="depot")
-    """The station where the depot is located. This depot handles `Rotation`s starting and ending at this station."""
+    """The station where the depot is located. This depot handles :attr:`Rotation` starting and ending at this station."""
 
     default_plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"))
     """The default plan of this depot. Foreign key to :attr:`Plan.id`."""
