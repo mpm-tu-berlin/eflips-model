@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, Trip, StopTime, Event
+    from eflips.model import Scenario, Trip, StopTime, Event, Depot
 
 
 class Line(Base):
@@ -307,6 +307,9 @@ class Station(Base):
     """
     The voltage level of the charging infrastructure. If `is_electrified` is true, this must be set.
     """
+
+    depot: Mapped["Depot"] = relationship("Depot", back_populates="station")
+    """The (optional) depot that is associated with this station. Only set if the station has a depot."""
 
     routes_departing: Mapped[List["Route"]] = relationship(
         "Route",

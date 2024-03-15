@@ -264,7 +264,9 @@ class TestGeneral:
 
         # Create a simple depot
 
-        depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
+        depot = Depot(
+            scenario=scenario, name="Test Depot", name_short="TD", station=stop_1
+        )
         session.add(depot)
 
         # Create plan
@@ -437,6 +439,11 @@ class TestScenario(TestGeneral):
             assert stop_time.scenario == cloned_scenario
             assert stop_time.trip.scenario == cloned_scenario
             assert stop_time.station.scenario == cloned_scenario
+
+        # Make sure the new depot's station entry points to the cloned scenario
+        # And the old depot's station entry points to the old scenario
+        for depot in session.query(Depot):
+            assert depot.scenario_id == depot.station.scenario_id
 
     def test_delete_scenario(self, session, sample_content):
         session.delete(sample_content)

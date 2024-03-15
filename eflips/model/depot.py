@@ -21,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, VehicleType, Event
+    from eflips.model import Scenario, VehicleType, Event, Station
 
 
 class Depot(Base):
@@ -44,12 +44,25 @@ class Depot(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the depot."""
 
+    station_id: Mapped[int] = mapped_column(ForeignKey("Station.id"))
+    """The station where the depot is located. This depot handles `Rotation`s starting and ending at this station. 
+    Foreign key to :attr:`Station.id`. Unique because a station can have only one depot."""
+    station: Mapped["Station"] = relationship("Station", back_populates="depot")
+    """The station where the depot is located. This depot handles `Rotation`s starting and ending at this station."""
+
     default_plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"))
     """The default plan of this depot. Foreign key to :attr:`Plan.id`."""
     default_plan: Mapped["Plan"] = relationship("Plan", back_populates="depot")
 
     areas: Mapped[List["Area"]] = relationship("Area", back_populates="depot")
     """The areas of this depot."""
+
+    __table_args__ = (
+        # What we actually would like is have station_id globally unique, but this raises
+        # a violation during the step of copyying wheer the data is duplicated already but the relationships
+        # are not yet updated. So we have to live with the unique constraint on the scenario level.
+        UniqueConstraint(scenario_id, station_id),
+    )
 
 
 class Plan(Base):

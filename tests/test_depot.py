@@ -13,6 +13,7 @@ from eflips.model import (
     Scenario,
     VehicleType,
     AssocPlanProcess,
+    Station,
 )
 from tests.test_general import TestGeneral
 
@@ -21,8 +22,18 @@ class TestDepot(TestGeneral):
     @pytest.fixture()
     def depot_with_content(self, session, scenario):
         # Create a simple depot
+        station = Station(
+            scenario=scenario,
+            name="Test Station 1",
+            name_short="TS1",
+            geom="POINT(0 0 0)",
+            is_electrified=False,
+        )
+        session.add(station)
 
-        depot = Depot(scenario=scenario, name="Test Depot", name_short="TD")
+        depot = Depot(
+            scenario=scenario, name="Test Depot", name_short="TD", station=station
+        )
         session.add(depot)
 
         # Create plan

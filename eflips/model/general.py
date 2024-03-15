@@ -379,6 +379,10 @@ class Scenario(Base):
         for depot in scenario_copy.depots:
             depot.default_plan_id = plan_id_map[depot.default_plan_id].id
 
+        # Depot <-> Station
+        for depot in scenario_copy.depots:
+            depot.station_id = station_id_map[depot.station_id].id
+
         # Area <-> Depot, VehicleType
         for area in scenario_copy.areas:
             area.depot_id = depot_id_map[area.depot_id].id
