@@ -78,6 +78,9 @@ class StopTime(Base):
         ),
     )
 
+    def __repr__(self) -> str:
+        return f"<StopTime(id={self.id}, arrival_time={self.arrival_time}, dwell_duration={self.dwell_duration}, station={self.station}, trip={self.trip})>"
+
 
 class TripType(PyEnum):
     """
@@ -153,6 +156,9 @@ class Trip(Base):
             name="trip_arrival_after_departure_check",
         ),
     )
+
+    def __repr__(self) -> str:
+        return f"<Trip(id={self.id}, departure_time={self.departure_time}, arrival_time={self.arrival_time}, route={self.route}, rotation={self.rotation})>"
 
 
 @event.listens_for(Trip, "before_insert")
@@ -300,6 +306,9 @@ class Rotation(Base):
         "Trip", back_populates="rotation", order_by="Trip.departure_time"
     )
     """A list of trips."""
+
+    def __repr__(self) -> str:
+        return f"<Rotation(id={self.id}, name={self.name})>"
 
 
 class ConsistencyWarning(UserWarning):

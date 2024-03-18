@@ -21,7 +21,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, VehicleType, Event
+    from eflips.model import Scenario, VehicleType, Event, Station
 
 
 class Depot(Base):
@@ -44,12 +44,27 @@ class Depot(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the depot."""
 
+    station_id: Mapped[int] = mapped_column(ForeignKey("Station.id"))
+    """The station where the depot is located. This depot handles :attr:`Rotation` starting and ending at this station. Foreign key to :attr:`Station.id`."""
+    station: Mapped["Station"] = relationship("Station", back_populates="depot")
+    """The station where the depot is located. This depot handles :attr:`Rotation` starting and ending at this station."""
+
     default_plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"))
     """The default plan of this depot. Foreign key to :attr:`Plan.id`."""
     default_plan: Mapped["Plan"] = relationship("Plan", back_populates="depot")
 
     areas: Mapped[List["Area"]] = relationship("Area", back_populates="depot")
     """The areas of this depot."""
+
+    __table_args__ = (
+        # What we actually would like is have station_id globally unique, but this raises
+        # a violation during the step of copyying wheer the data is duplicated already but the relationships
+        # are not yet updated. So we have to live with the unique constraint on the scenario level.
+        UniqueConstraint(scenario_id, station_id),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Depot(id={self.id}, name={self.name})>"
 
 
 class Plan(Base):
@@ -86,6 +101,9 @@ class Plan(Base):
         order_by="AssocPlanProcess.ordinal",
         viewonly=True,
     )
+
+    def __repr__(self) -> str:
+        return f"<Plan(id={self.id}, name={self.name})>"
 
 
 class AreaType(PyEnum):
@@ -132,7 +150,6 @@ class Area(Base):
 
     name: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional name for the area. If set, it must be unique within the scenario."""
-    _table_args_list.append(UniqueConstraint(scenario_id, name))
 
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the area."""
@@ -169,6 +186,9 @@ class Area(Base):
 
     __table_args__ = tuple(_table_args_list)
 
+    def __repr__(self) -> str:
+        return f"<Area(id={self.id}, name={self.name}, area_type={self.area_type}, capacity={self.capacity})>"
+
 
 class Process(Base):
     """A Process represents a certain action that can be executed on a vehicle."""
@@ -187,7 +207,6 @@ class Process(Base):
 
     name: Mapped[str] = mapped_column(Text)
     """A name for the process. If set, it must be unique within the scenario."""
-    _table_args_list.append(UniqueConstraint(scenario_id, name))
 
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the process."""
@@ -234,6 +253,9 @@ class Process(Base):
 
     __table_args__ = tuple(_table_args_list)
 
+    def __repr__(self) -> str:
+        return f"<Process(id={self.id}, name={self.name}, duration={self.duration}, electric_power={self.electric_power})>"
+
 
 class AssocPlanProcess(Base):
     """The association table for the many-to-many relationship between :class:`Plan` and :class:`Process`."""
@@ -263,6 +285,9 @@ class AssocPlanProcess(Base):
     ordinal: Mapped[int] = mapped_column(Integer)
     """The ordinal of the process in the plan."""
 
+    def __repr__(self) -> str:
+        return f"<AssocPlanProcess(id={self.id}, Plan={self.plan}, Process={self.process}, ordinal={self.ordinal})>"
+
 
 class AssocAreaProcess(Base):
     """The association table for the many-to-many relationship between :class:`Area` and :class:`Process`."""
@@ -277,3 +302,6 @@ class AssocAreaProcess(Base):
 
     process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"))
     """The unique identifier of the process. Foreign key to :attr:`Process.id`."""
+
+    def __repr__(self) -> str:
+        return f"<AssocAreaProcess(id={self.id}, area_id={self.area_id}, process_id={self.process_id})>"

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, Trip, StopTime, Event
+    from eflips.model import Scenario, Trip, StopTime, Event, Depot
 
 
 class Line(Base):
@@ -48,6 +48,9 @@ class Line(Base):
     """The short name of the line. Usually a number or letter, e.g. "1" or "A"."""
 
     routes: Mapped[list["Route"]] = relationship("Route", back_populates="line")
+
+    def __repr__(self) -> str:
+        return f"<Line(id={self.id}, name={self.name})>"
 
 
 class Route(Base):
@@ -136,6 +139,9 @@ class Route(Base):
             name="route_shape_distance_check",
         ),
     )
+
+    def __repr__(self) -> str:
+        return f"<Route(id={self.id}, name={self.name})>"
 
 
 @event.listens_for(Route, "before_insert")
@@ -308,6 +314,9 @@ class Station(Base):
     The voltage level of the charging infrastructure. If `is_electrified` is true, this must be set.
     """
 
+    depot: Mapped["Depot"] = relationship("Depot", back_populates="station")
+    """The (optional) depot that is associated with this station. Only set if the station has a depot."""
+
     routes_departing: Mapped[List["Route"]] = relationship(
         "Route",
         back_populates="departure_station",
@@ -362,6 +371,9 @@ class Station(Base):
         ),
     )
 
+    def __repr__(self) -> str:
+        return f"<Station(id={self.id}, name={self.name}, is_electrified={self.is_electrified})>"
+
 
 class AssocRouteStation(Base):
     """
@@ -399,3 +411,6 @@ class AssocRouteStation(Base):
 
     elapsed_distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The distance in m that the bus has traveled when it reached this stop."""
+
+    def __repr__(self) -> str:
+        return f"<AssocRouteStation(id={self.id}, route={self.route}, station={self.station}, elapsed_distance={self.elapsed_distance})>"

@@ -40,3 +40,21 @@ postgresql-autotoc can also generate graphs of the database schema. The command 
    #   splines=true;
    #  below the first line
    neato -Tdf -o schema.pdf $DATABASE.neato
+
+How to remove all simulation results from the database
+======================================================
+
+The recommended way to remove all simulation results from the database is to use the following SQL command:
+
+.. code-block:: sql
+
+   UPDATE "Rotation" set vehicle_id=NULL;
+   DELETE FROM "Event";
+   DELETE FROM "Vehicle";
+
+   DELETE FROM "AssocPlanProcess";
+   DELETE FROM "AssocAreaProcess";
+   DELETE FROM "Area";
+   DELETE FROM "Depot";
+   DELETE FROM "Plan";
+   DELETE FROM "Process";
