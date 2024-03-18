@@ -301,11 +301,9 @@ class AssocAreaProcess(Base):
 
     area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"))
     """The unique identifier of the area. Foreign key to :attr:`Area.id`."""
-    area: Mapped["Area"] = relationship("Area")
 
     process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"))
     """The unique identifier of the process. Foreign key to :attr:`Process.id`."""
-    process: Mapped["Process"] = relationship("Process")
 
     def __repr__(self) -> str:
-        return f"<AssocAreaProcess(id={self.id}, Area={self.area}, Process={self.process})>"
+        return f"<AssocAreaProcess(id={self.id}, area_id={self.area_id}, process_id={self.process_id})>"

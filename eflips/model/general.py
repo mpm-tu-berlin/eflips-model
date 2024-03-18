@@ -692,14 +692,12 @@ class AssocVehicleTypeVehicleClass(Base):
 
     vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
-    vehicle_type: Mapped[VehicleType] = relationship("VehicleType")
 
     vehicle_class_id: Mapped[int] = mapped_column(ForeignKey("VehicleClass.id"))
     """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
-    vehicle_class: Mapped[VehicleClass] = relationship("VehicleClass")
 
     def __repr__(self) -> str:
-        return f"<AssocVehicleTypeVehicleClass(id={self.id}, vehicle_type={self.vehicle_type}, vehicle_class={self.vehicle_class})>"
+        return f"<AssocVehicleTypeVehicleClass(id={self.id}, vehicle_type_id={self.vehicle_type_id}, vehicle_class_id={self.vehicle_class_id})>"
 
 
 class EventType(PyEnum):
