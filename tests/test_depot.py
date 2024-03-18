@@ -147,41 +147,6 @@ class TestArea(TestDepot):
         session.add(direct_oneside_area)
         session.commit()
 
-    def test_create_area_same_name(self, depot_with_content, session, scenario):
-        vehicle_type = VehicleType(
-            scenario=scenario,
-            name="Test Vehicle Type 2",
-            battery_capacity=100,
-            charging_curve=[[0, 150], [1, 150]],
-            opportunity_charging_capable=True,
-        )
-
-        line_area = Area(
-            scenario=scenario,
-            depot=depot_with_content,
-            name="line area",
-            area_type=AreaType.LINE,
-            row_count=2,
-            capacity=6,
-        )
-
-        session.add(line_area)
-        line_area.vehicle_type = vehicle_type
-
-        direct_twoside_area = Area(
-            scenario=scenario,
-            depot=depot_with_content,
-            name="line area",
-            area_type=AreaType.DIRECT_TWOSIDE,
-            capacity=4,
-        )
-        direct_twoside_area.vehicle_type = vehicle_type
-        session.add(direct_twoside_area)
-
-        with pytest.raises(IntegrityError):
-            session.commit()
-        session.rollback()
-
     def test_invalid_area(self, depot_with_content, session, scenario):
         # Test line area with invalid capacity
 
@@ -323,30 +288,6 @@ class TestProcess(TestGeneral):
                 electric_power=-150,
             )
             session.add(process)
-            session.commit()
-        session.rollback()
-
-    def test_create_process_same_name(self, session, scenario):
-        # create a valid process
-        process = Process(
-            name="Test Process",
-            scenario=scenario,
-            dispatchable=False,
-            duration=timedelta(minutes=30),
-            electric_power=150,
-        )
-
-        session.add(process)
-
-        process = Process(
-            name="Test Process",
-            scenario=scenario,
-            dispatchable=False,
-            duration=timedelta(minutes=30),
-        )
-
-        session.add(process)
-        with pytest.raises(IntegrityError):
             session.commit()
         session.rollback()
 

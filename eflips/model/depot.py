@@ -150,7 +150,6 @@ class Area(Base):
 
     name: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional name for the area. If set, it must be unique within the scenario."""
-    _table_args_list.append(UniqueConstraint(scenario_id, name))
 
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the area."""
