@@ -49,6 +49,9 @@ class Line(Base):
 
     routes: Mapped[list["Route"]] = relationship("Route", back_populates="line")
 
+    def __repr__(self) -> str:
+        return f"<Line(id={self.id}, name={self.name})>"
+
 
 class Route(Base):
     """
@@ -136,6 +139,9 @@ class Route(Base):
             name="route_shape_distance_check",
         ),
     )
+
+    def __repr__(self) -> str:
+        return f"<Route(id={self.id}, name={self.name})>"
 
 
 @event.listens_for(Route, "before_insert")
@@ -365,6 +371,9 @@ class Station(Base):
         ),
     )
 
+    def __repr__(self) -> str:
+        return f"<Station(id={self.id}, name={self.name}, is_electrified={self.is_electrified})>"
+
 
 class AssocRouteStation(Base):
     """
@@ -402,3 +411,6 @@ class AssocRouteStation(Base):
 
     elapsed_distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The distance in m that the bus has traveled when it reached this stop."""
+
+    def __repr__(self) -> str:
+        return f"<AssocRouteStation(id={self.id}, route={self.route}, station={self.station}, elapsed_distance={self.elapsed_distance})>"

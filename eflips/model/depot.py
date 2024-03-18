@@ -63,6 +63,9 @@ class Depot(Base):
         UniqueConstraint(scenario_id, station_id),
     )
 
+    def __repr__(self) -> str:
+        return f"<Depot(id={self.id}, name={self.name})>"
+
 
 class Plan(Base):
     """
@@ -98,6 +101,9 @@ class Plan(Base):
         order_by="AssocPlanProcess.ordinal",
         viewonly=True,
     )
+
+    def __repr__(self) -> str:
+        return f"<Plan(id={self.id}, name={self.name})>"
 
 
 class AreaType(PyEnum):
@@ -181,6 +187,9 @@ class Area(Base):
 
     __table_args__ = tuple(_table_args_list)
 
+    def __repr__(self) -> str:
+        return f"<Area(id={self.id}, name={self.name}, area_type={self.area_type}, capacity={self.capacity})>"
+
 
 class Process(Base):
     """A Process represents a certain action that can be executed on a vehicle."""
@@ -246,6 +255,9 @@ class Process(Base):
 
     __table_args__ = tuple(_table_args_list)
 
+    def __repr__(self) -> str:
+        return f"<Process(id={self.id}, name={self.name}, duration={self.duration}, electric_power={self.electric_power})>"
+
 
 class AssocPlanProcess(Base):
     """The association table for the many-to-many relationship between :class:`Plan` and :class:`Process`."""
@@ -275,6 +287,9 @@ class AssocPlanProcess(Base):
     ordinal: Mapped[int] = mapped_column(Integer)
     """The ordinal of the process in the plan."""
 
+    def __repr__(self) -> str:
+        return f"<AssocPlanProcess(id={self.id}, Plan={self.plan}, Process={self.process}, ordinal={self.ordinal})>"
+
 
 class AssocAreaProcess(Base):
     """The association table for the many-to-many relationship between :class:`Area` and :class:`Process`."""
@@ -286,6 +301,11 @@ class AssocAreaProcess(Base):
 
     area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"))
     """The unique identifier of the area. Foreign key to :attr:`Area.id`."""
+    area: Mapped["Area"] = relationship("Area")
 
     process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"))
     """The unique identifier of the process. Foreign key to :attr:`Process.id`."""
+    process: Mapped["Process"] = relationship("Process")
+
+    def __repr__(self) -> str:
+        return f"<AssocAreaProcess(id={self.id}, Area={self.area}, Process={self.process})>"

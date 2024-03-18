@@ -421,6 +421,9 @@ class Scenario(Base):
         session.flush()
         return scenario_copy
 
+    def __repr__(self) -> str:
+        return f"<Scenario(id={self.id}, name={self.name})>"
+
 
 class VehicleType(Base):
     """
@@ -567,6 +570,9 @@ class VehicleType(Base):
 
     __table_args__ = tuple(_table_args_list)
 
+    def __repr__(self) -> str:
+        return f"<VehicleType(id={self.id}, name={self.name})>"
+
 
 class BatteryType(Base):
     __tablename__ = "BatteryType"
@@ -590,6 +596,9 @@ class BatteryType(Base):
 
     chemistry: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSONB)
     """The chemistry of the battery. Stored as a JSON object, defined by eflips-LCA"""
+
+    def __repr__(self) -> str:
+        return f"<BatteryType (id={self.id}, specific_mass={self.specific_mass}, chemistry={self.chemistry})>"
 
 
 class Vehicle(Base):
@@ -629,6 +638,9 @@ class Vehicle(Base):
 
     events: Mapped[List["Event"]] = relationship("Event", back_populates="vehicle")
 
+    def __repr__(self) -> str:
+        return f"<Vehicle(id={self.id}, name={self.name})>"
+
 
 class VehicleClass(Base):
     """
@@ -665,6 +677,9 @@ class VehicleClass(Base):
         back_populates="vehicle_classes",
     )
 
+    def __repr__(self) -> str:
+        return f"<VehicleClass(id={self.id}, name={self.name})>"
+
 
 class AssocVehicleTypeVehicleClass(Base):
     """
@@ -677,9 +692,14 @@ class AssocVehicleTypeVehicleClass(Base):
 
     vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
+    vehicle_type: Mapped[VehicleType] = relationship("VehicleType")
 
     vehicle_class_id: Mapped[int] = mapped_column(ForeignKey("VehicleClass.id"))
     """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
+    vehicle_class: Mapped[VehicleClass] = relationship("VehicleClass")
+
+    def __repr__(self) -> str:
+        return f"<AssocVehicleTypeVehicleClass(id={self.id}, vehicle_type={self.vehicle_type}, vehicle_class={self.vehicle_class})>"
 
 
 class EventType(PyEnum):
@@ -821,3 +841,6 @@ class Event(Base):
         ),
         CheckConstraint("time_start < time_end", name="duration_positive"),
     )
+
+    def __repr__(self) -> str:
+        return f"<Event(id={self.id}, event_type={self.event_type}, time_start={self.time_start}, time_end={self.time_end})>"
