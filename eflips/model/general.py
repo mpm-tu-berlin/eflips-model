@@ -762,7 +762,9 @@ class Event(Base):
         "VehicleType", back_populates="events"
     )
 
-    vehicle_id: Mapped[int] = mapped_column(ForeignKey("Vehicle.id"), nullable=True)
+    vehicle_id: Mapped[int] = mapped_column(
+        ForeignKey("Vehicle.id"), nullable=True, index=True
+    )
     """The unique identifier of the vehicle. Foreign key to :attr:`Vehicle.id`."""
     vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="events")
     """The vehicle."""
@@ -781,7 +783,9 @@ class Event(Base):
     physical locations is defined by the depot layout and/or the multi-chargpoint terminal layout.
     """
 
-    trip_id: Mapped[int] = mapped_column(ForeignKey("Trip.id"), nullable=True)
+    trip_id: Mapped[int] = mapped_column(
+        ForeignKey("Trip.id"), nullable=True, index=True
+    )
     """The unique identifier of the trip. Foreign key to :attr:`Trip.id`."""
     trip: Mapped["Trip"] = relationship("Trip", back_populates="events")
 
