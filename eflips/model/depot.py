@@ -175,7 +175,7 @@ class Area(Base):
         name="capacity_validity_check",
     )
 
-    processes: Mapped[List["Area"]] = relationship(
+    processes: Mapped[List["Process"]] = relationship(
         "Process", secondary="AssocAreaProcess", back_populates="areas"
     )
 
