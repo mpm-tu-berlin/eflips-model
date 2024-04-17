@@ -829,8 +829,6 @@ class Event(Base):
             name="scenario_id_time_range_excl",
             using="gist",
         ),
-        CheckConstraint("soc_start >= 0"),
-        CheckConstraint("soc_end >= 0"),
         CheckConstraint("soc_start <= 1"),
         CheckConstraint("soc_end <= 1"),
         # Also make sure the event type is valid for the nullable fields
