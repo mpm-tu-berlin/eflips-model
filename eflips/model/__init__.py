@@ -44,6 +44,9 @@ from eflips.model.general import VehicleClass as VehicleClass
 from eflips.model.general import VehicleType as VehicleType
 from eflips.model.general import Event as Event
 from eflips.model.general import EventType as EventType
+from eflips.model.general import (
+    AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
+)
 
 from eflips.model.network import ChargeType as ChargeType
 from eflips.model.network import Line as Line

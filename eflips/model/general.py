@@ -568,6 +568,10 @@ class VehicleType(Base):
     areas: Mapped[List["Area"]] = relationship("Area", back_populates="vehicle_type")
     """A list of areas."""
 
+    assoc_vehicle_type_vehicle_classes: Mapped[
+        "AssocVehicleTypeVehicleClass"
+    ] = relationship("AssocVehicleTypeVehicleClass", viewonly=True)
+
     __table_args__ = tuple(_table_args_list)
 
     def __repr__(self) -> str:
@@ -677,6 +681,10 @@ class VehicleClass(Base):
         back_populates="vehicle_classes",
     )
 
+    assoc_vehicle_type_vehicle_classes: Mapped[
+        "AssocVehicleTypeVehicleClass"
+    ] = relationship("AssocVehicleTypeVehicleClass", viewonly=True)
+
     def __repr__(self) -> str:
         return f"<VehicleClass(id={self.id}, name={self.name})>"
 
@@ -692,9 +700,15 @@ class AssocVehicleTypeVehicleClass(Base):
 
     vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
+    vehicle_type: Mapped[VehicleType] = relationship(
+        "VehicleType", overlaps="vehicle_classes,vehicle_types"
+    )
 
     vehicle_class_id: Mapped[int] = mapped_column(ForeignKey("VehicleClass.id"))
     """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
+    vehicle_class: Mapped[VehicleClass] = relationship(
+        "VehicleClass", overlaps="vehicle_classes,vehicle_types"
+    )
 
     def __repr__(self) -> str:
         return f"<AssocVehicleTypeVehicleClass(id={self.id}, vehicle_type_id={self.vehicle_type_id}, vehicle_class_id={self.vehicle_class_id})>"

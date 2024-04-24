@@ -182,6 +182,11 @@ class Area(Base):
     events: Mapped[List["Event"]] = relationship("Event", back_populates="area")
     """The events that happened in this area."""
 
+    assoc_area_processes: Mapped[List["AssocAreaProcess"]] = relationship(
+        "AssocAreaProcess", viewonly=True
+    )
+    """The association between this area and its processes."""
+
     _table_args_list.append(capacity_constraint)
 
     __table_args__ = tuple(_table_args_list)
@@ -238,6 +243,10 @@ class Process(Base):
         "Area",
         secondary="AssocAreaProcess",
         back_populates="processes",
+    )
+
+    assoc_area_processes: Mapped[List["AssocAreaProcess"]] = relationship(
+        "AssocAreaProcess", viewonly=True
     )
 
     # This constraint verifies that the process actually does something
@@ -299,9 +308,13 @@ class AssocAreaProcess(Base):
 
     area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"))
     """The unique identifier of the area. Foreign key to :attr:`Area.id`."""
+    area: Mapped["Area"] = relationship("Area", overlaps="areas,processes")
+    """The area."""
 
     process_id: Mapped[int] = mapped_column(ForeignKey("Process.id"))
     """The unique identifier of the process. Foreign key to :attr:`Process.id`."""
+    process: Mapped["Process"] = relationship("Process", overlaps="areas,processes")
+    """The process."""
 
     def __repr__(self) -> str:
         return f"<AssocAreaProcess(id={self.id}, area_id={self.area_id}, process_id={self.process_id})>"
