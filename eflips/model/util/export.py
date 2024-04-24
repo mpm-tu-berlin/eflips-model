@@ -139,7 +139,7 @@ def get_or_update_max_sequence_number(
     the sequence numbers when importing a scenario. Or to fix the sequence numbers after importing a scenario.
     :param conn: An open database connection.
     :param do_update: If True, the sequence counters will also be updated in the database to continue counting after
-                      the maximum sequence number.
+    the maximum sequence number.
     :return: A dictionary containing the maximum sequence number for each table.
     """
     SEQUENCE_NUMBER_SUFFIX = "_id_seq"
