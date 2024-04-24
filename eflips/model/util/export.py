@@ -8,22 +8,185 @@ import os
 import pickle
 from argparse import ArgumentParser
 from copy import deepcopy
-from typing import List
+from typing import List, Dict
 
+import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.orm import (
     class_mapper,
-    joinedload,
     make_transient,
-    make_transient_to_detached,
     Session,
+    joinedload,
+    subqueryload,
+    selectinload,
+    make_transient_to_detached,
+    RelationshipDirection,
 )
 
-from eflips.model import Area, AssocAreaProcess, Base, Scenario
-from eflips.model.general import AssocVehicleTypeVehicleClass, VehicleType
+from eflips.model import Base
+from eflips.model.depot import Area as Area
+from eflips.model.depot import AreaType as AreaType
+from eflips.model.depot import AssocAreaProcess as AssocAreaProcess
+from eflips.model.depot import AssocPlanProcess as AssocPlanProcess
+from eflips.model.depot import Depot as Depot
+from eflips.model.depot import Plan as Plan
+from eflips.model.depot import Process as Process
+from eflips.model.general import (
+    AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
+)
+from eflips.model.general import BatteryType as BatteryType
+from eflips.model.general import Event as Event
+from eflips.model.general import EventType as EventType
+from eflips.model.general import Scenario as Scenario
+from eflips.model.general import Vehicle as Vehicle
+from eflips.model.general import VehicleClass as VehicleClass
+from eflips.model.general import VehicleType as VehicleType
+from eflips.model.network import AssocRouteStation as AssocRouteStation
+from eflips.model.network import ChargeType as ChargeType
+from eflips.model.network import Line as Line
+from eflips.model.network import Route as Route
+from eflips.model.network import Station as Station
+from eflips.model.schedule import Rotation as Rotation
+from eflips.model.schedule import StopTime as StopTime
+from eflips.model.schedule import Trip as Trip
+
+ALL_CLASSES_WITH_SCENARIO_ID = [
+    BatteryType,
+    Vehicle,
+    VehicleClass,
+    VehicleType,
+    Event,
+    Line,
+    Route,
+    Station,
+    AssocRouteStation,
+    StopTime,
+    Trip,
+    Rotation,
+    Depot,
+    Plan,
+    Area,
+    Process,
+    AssocPlanProcess,
+]
+ALL_PURE_ASSOC_CLASSES = [AssocAreaProcess, AssocVehicleTypeVehicleClass]
+ALL_TABLE_CLASSES = ALL_CLASSES_WITH_SCENARIO_ID + ALL_PURE_ASSOC_CLASSES + [Scenario]
 
 
-def extract_scenarioo(scenario_id: int, session: Session) -> List[Base]:
+def start_counting_foreign_keys_at(
+    start: Dict[str, int], objs: List[Base]
+) -> List[Base]:
+    """
+    Take a collection of related objects, and set the foreign key IDs on the local and remote side of each relationship
+    to values >= the given start value. This is useful when importing a scenario, as it allows to set the IDs of the
+    objects to be imported to values that are not already present in the database.
+    :param start: A dictionary containing the starting value for each class.
+    :param objs: A list of Base objects.
+    :return: The same list of Base objects, but with the foreign key IDs set to values >= the given start value.
+    """
+
+    # In a first pass, find how much we need to offset the IDs by
+    # If e.g. our IDs range from 1 to 6, and the base is 10, we need to add 9 to each ID
+    offsets = {}
+    for obj in objs:
+        assert len(class_mapper(obj.__class__).primary_key) == 1
+        primary_key_name = class_mapper(obj.__class__).primary_key[0].name
+        primary_key = obj.__dict__[primary_key_name]
+        if primary_key is None:
+            raise ValueError(f"Primary key of {obj} is None.")
+        if obj.__class__.__name__ not in offsets:
+            offsets[obj.__class__.__name__] = (
+                start[obj.__class__.__name__] - primary_key
+            )
+        else:
+            offsets[obj.__class__.__name__] = max(
+                offsets[obj.__class__.__name__],
+                start[obj.__class__.__name__] - primary_key,
+            )
+
+    # In a second pass, set the IDs to the new values. Do that both if they are on the local or remote side of a
+    # relationship.
+    for obj in objs:
+        assert len(class_mapper(obj.__class__).primary_key) == 1
+        primary_key_name = class_mapper(obj.__class__).primary_key[0].name
+        primary_key = obj.__dict__[primary_key_name]
+        obj.__dict__[primary_key_name] = primary_key + offsets[obj.__class__.__name__]
+
+        for relationship in class_mapper(obj.__class__).relationships:
+            if relationship.direction in (
+                RelationshipDirection.ONETOMANY,
+                RelationshipDirection.MANYTOMANY,
+            ):
+                # We are on the remote side of a one-to-many relationship. No need to change anything.
+                continue
+            assert len(relationship.local_columns) == 1
+            relationship_column_name = next(iter(relationship.local_columns)).name
+            relationship_column = obj.__dict__[relationship_column_name]
+            if relationship_column is not None:
+                relationship_column = (
+                    relationship_column + offsets[str(relationship.argument)]
+                )
+                obj.__dict__[relationship_column_name] = relationship_column
+
+    return objs
+
+
+def get_or_update_max_sequence_number(
+    conn: psycopg2.extensions.connection, do_update: bool = False
+) -> Dict[str, int]:
+    """
+    Loads the maximum sequence number for each table in the database. Can be used to determine the starting point for
+    the sequence numbers when importing a scenario. Or to fix the sequence numbers after importing a scenario.
+    :param conn: An open database connection.
+    :param do_update: If True, the sequence counters will also be updated in the database to continue counting after
+                      the maximum sequence number.
+    :return: A dictionary containing the maximum sequence number for each table.
+    """
+    SEQUENCE_NUMBER_SUFFIX = "_id_seq"
+    KEY_NAME = "id"  # The name of the primary key column in the tables
+    result = {}
+    with conn.cursor() as cur:
+        for table in ALL_TABLE_CLASSES:
+            table_name = table.__name__
+            query = f'SELECT MAX("{KEY_NAME}") FROM "{table_name}"'
+            cur.execute(query)
+            res = cur.fetchone()
+            max_id = res[0] + 1 if res is not None and res[0] is not None else 0
+            result[table_name] = max_id
+            if do_update:
+                cur.execute(
+                    f'ALTER SEQUENCE "{table_name + SEQUENCE_NUMBER_SUFFIX}" RESTART WITH {max_id + 1}'
+                )
+                cur.execute(
+                    f'SELECT NEXTVAL(\'"public"."{table_name + SEQUENCE_NUMBER_SUFFIX}"\')'
+                )
+                res = cur.fetchone()
+                new_max_id = res[0] if res is not None else None
+                if new_max_id <= max_id:
+                    raise ValueError(
+                        f"Sequence {table_name + SEQUENCE_NUMBER_SUFFIX} did not restart properly. "
+                        f"It is still at {new_max_id}"
+                    )
+    return result
+
+
+def disconnect_obj(obj: Base) -> Base:
+    """
+    Take an object and disconnect it from the database session. This will make it a pure Python object.
+
+    This is done by
+    - setting the primary key to None
+    - setting the object to transient state
+    - setting all ids for the foreign keys to None
+
+    :param obj: An SQLAlchemy object.
+    :return: The same object, but disconnected from the database session.
+    """
+    make_transient(obj)
+    return obj
+
+
+def extract_scenario(scenario_id: int, session: Session) -> List[Base]:
     """
     Extracts the scenario with the given ID from the database. It will be turned into a set of Base objects, which are
     no longer attached to the database.
@@ -31,115 +194,34 @@ def extract_scenarioo(scenario_id: int, session: Session) -> List[Base]:
     :param session: An active database session.
     :return: A list of Base objects representing the scenario.
     """
+    all_related_objects = []
+
     scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one_or_none()
     if not scenario:
         raise ValueError(f"No scenario with ID {scenario_id} found.")
 
-    # Go through the scenario and extract all the objects.
-    result = [scenario]
+    # Load all objects related to the scenario
+    for cls in ALL_CLASSES_WITH_SCENARIO_ID:
+        assert hasattr(cls, "scenario_id")
+        query = session.query(cls).filter(cls.scenario_id == scenario_id)
+        for obj in query:
+            all_related_objects.append(disconnect_obj(obj))
 
-    list_of_objs = [
-        scenario.vehicle_types,
-        scenario.battery_types,
-        scenario.vehicles,
-        scenario.vehicle_classes,
-        scenario.lines,
-        scenario.routes,
-        scenario.stations,
-        scenario.assoc_route_stations,
-        scenario.stop_times,
-        scenario.trips,
-        scenario.rotations,
-        scenario.events,
-        scenario.depots,
-        scenario.plans,
-        scenario.areas,
-        scenario.processes,
-        scenario.assoc_plan_processes,
-    ]
-
-    for obj_list in list_of_objs:
-        for obj in obj_list:
-            make_transient(obj)
-            obj.id = None
-            result.append(obj)
-
-    # For two pure association_tables, we need to extract the objects in a different way.
-    assocs_vehicle_type_vehicle_class = (
-        session.query(AssocVehicleTypeVehicleClass)
-        .join(VehicleType)
-        .filter(VehicleType.scenario_id == scenario_id)
-        .all()
-    )
-    for assoc in assocs_vehicle_type_vehicle_class:
-        make_transient(assoc)
-        assoc.id = None
-        result.append(assoc)
-
-    assocs_area_process = (
-        session.query(AssocAreaProcess)
-        .join(Area)
-        .filter(Area.scenario_id == scenario_id)
-        .all()
-    )
-    for assoc in assocs_area_process:
-        make_transient(assoc)
-        assoc.id = None
-        result.append(assoc)
-
-    # Cut off the scenario from the database.
-    make_transient(scenario)
-    scenario.id = None
-
-    return result
-
-
-def extract_scenario(scenario_id: int, session: Session) -> List[Base]:
-    # Load the original scenario and related objects
-    scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
-    list_of_objs = [
-        scenario.vehicle_types,
-        scenario.battery_types,
-        scenario.vehicles,
-        scenario.vehicle_classes,
-        scenario.lines,
-        scenario.routes,
-        scenario.stations,
-        scenario.assoc_route_stations,
-        scenario.stop_times,
-        scenario.trips,
-        scenario.rotations,
-        scenario.events,
-        scenario.depots,
-        scenario.plans,
-        scenario.areas,
-        scenario.processes,
-        scenario.assoc_plan_processes,
-    ]
-
-    # Create a deep copy of the scenario graph
-    # deepcopy will attempt to recursively copy all attributes, which can include SQLAlchemy internal state
-    # Depending on your SQLAlchemy setup, you might need to adjust how relationships and foreign keys are copied
-    new_scenario = deepcopy(scenario)
-    new_scenario.id = None  # Assuming the primary key is auto-generated
-
-    # Inspect and copy relationships
-    for relationship in class_mapper(Scenario).relationships:
-        related_objects = getattr(scenario, relationship.key)
-        if isinstance(related_objects, list):
-            # Handle one-to-many relationships
-            new_related_objects = []
-            for obj in related_objects:
-                new_obj = deepcopy(obj)
-                new_obj.id = None  # Reset primary key for related object
-                new_related_objects.append(new_obj)
-            setattr(new_scenario, relationship.key, new_related_objects)
+    # Load all the association tables
+    for cls in ALL_PURE_ASSOC_CLASSES:
+        if cls == AssocAreaProcess:
+            query = session.query(AssocAreaProcess).join(Area).filter(Area.scenario_id == scenario_id)  # type: ignore
+        elif cls == AssocVehicleTypeVehicleClass:
+            query = session.query(AssocVehicleTypeVehicleClass).join(VehicleType).filter(VehicleType.scenario_id == scenario_id)  # type: ignore
         else:
-            # Handle one-to-one relationships
-            new_obj = deepcopy(related_objects)
-            if new_obj:
-                new_obj.id = None
-                setattr(new_scenario, relationship.key, new_obj)
+            raise ValueError(f"Unknown association class {cls}.")
+        for obj in query:
+            all_related_objects.append(disconnect_obj(obj))
+
+    scenario.parent_id = None  # type: ignore
+    scenario.parent = None  # type: ignore
+    all_related_objects.append(disconnect_obj(scenario))
+    return all_related_objects
 
 
 if __name__ == "__main__":
@@ -180,10 +262,11 @@ if __name__ == "__main__":
         "'postgresql://user:password@host:port/database'. If none is provided, DATABASE_URL environment variable "
         "will be used.",
     )
-    args = args.parse_args()
+    parsed = args.parse_args()
+    del args
 
     # Get the database URL
-    database_url = args.database_url or os.environ.get("DATABASE_URL")
+    database_url = parsed.database_url or os.environ.get("DATABASE_URL")
     if not database_url:
         raise ValueError(
             "No database URL provided. Please provide one using the --database_url argument or the "
@@ -194,13 +277,13 @@ if __name__ == "__main__":
     with Session(engine) as session:
         try:
             # Get the scenario ID. If it is not provied, load all scenarios.
-            if args.scenario_ids:
-                scenario_ids = args.scenario_ids
+            if parsed.scenario_ids:
+                scenario_ids = parsed.scenario_ids
             else:
                 scenario_id_result = session.query(Scenario.id)
                 scenario_ids = [result[0] for result in scenario_id_result]
 
-            if args.list:
+            if parsed.list:
                 for scenario_id in scenario_ids:
                     scenario = (
                         session.query(Scenario).filter(Scenario.id == scenario_id).one()
@@ -212,29 +295,18 @@ if __name__ == "__main__":
             for scenario_id in scenario_ids:
                 all_objects.extend(extract_scenario(scenario_id, session))
 
+            # Get the alembic version
+            with session.connection().connection.driver_connection.cursor() as cur:  # type: ignore
+                cur.execute("SELECT * FROM alembic_version")
+                alembic_version_str = cur.fetchone()[0]
+
+            # Create a dictionary with the alembic version and the objects
+            to_dump = {"alembic_version": alembic_version_str, "objects": all_objects}
+
             # Write the objects to a compressed file.
-            with gzip.open(args.output_file, "wb") as file:
-                pickle.dump(all_objects, file)
+            with gzip.open(parsed.output_file, "wb") as file:
+                pickle.dump(to_dump, file)
 
         finally:
-            session.close()
-
-    # TESTING: Clear the database
-    # Base.metadata.drop_all(engine)
-    # Base.metadata.create_all(engine)
-
-    # TESTING: Load the scenario back into the database
-    with gzip.open(args.output_file, "rb") as file:
-        all_objects = pickle.load(file)
-    with Session(engine) as session:
-        try:
-            for obj in all_objects:
-                make_transient(obj)
-                session.add(obj)
-        except Exception as e:
-            print(e)
             session.rollback()
-            raise
-        finally:
-            session.commit()
             session.close()
