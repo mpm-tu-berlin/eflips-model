@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
 from typing import Any, Dict, List, TYPE_CHECKING, Union
 
@@ -23,6 +23,7 @@ from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, 
 
 from eflips.model import Base
 from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
+from eflips.model.schedule import Rotation, Trip, StopTime
 
 if TYPE_CHECKING:
     from eflips.model import (
@@ -420,6 +421,39 @@ class Scenario(Base):
             ].id
         session.flush()
         return scenario_copy
+
+    def select_rotations(
+        self, session: Session, start_time: datetime, time_window: timedelta
+    ) -> None:
+        """
+        Selects the rotations that are active during the given time window.
+        :param session: The database session.
+        :param start_time: The start time of the time window. Rotations that start before this time are not selected.
+        This time must have a timezone.
+        :param time_window: The time window. Rotations that end after this time are not selected.
+        :return: None
+        """
+
+        rotations = self.rotations
+
+        if start_time.tzinfo is None or start_time.tzinfo.utcoffset(start_time) is None:
+            raise ValueError("start_time must have a timezone")
+
+        for rotation in rotations:
+            trips = rotation.trips
+            trips.sort(key=lambda x: x.departure_time)
+
+            if (
+                trips[0].departure_time < start_time
+                or trips[-1].departure_time >= start_time + time_window
+            ):
+                for trip in trips:
+                    for stop_time in trip.stop_times:
+                        session.delete(stop_time)
+                    session.delete(trip)
+
+                session.delete(rotation)
+        session.flush()
 
     def __repr__(self) -> str:
         return f"<Scenario(id={self.id}, name={self.name})>"
