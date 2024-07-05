@@ -105,7 +105,7 @@ class Route(Base):
     distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The length of the route in meters."""
 
-    geom: Mapped[Geometry] = mapped_column(
+    it: Mapped[Geometry] = mapped_column(
         Geometry("LINESTRINGZ", srid=4326), nullable=True
     )
     """
