@@ -426,13 +426,13 @@ class Scenario(Base):
         self, session: Session, start_time: datetime, time_window: timedelta
     ) -> None:
         """
-        Keeps only the rotations that are within the time window. *Deletes all other rotations from the database*. This
+        Keeps only the rotations that are within the time window. Deletes all other rotations from the database. This
         method is useful if (for example) your import gave you a six-month schedule, but you only want to simulate a
         week of it.
 
         :param session: An SQLAlchemy session to a database with eflips-model tables.
         :param start_time: The start time of the time window. Rotations that start before this time are not selected.
-        This time must have a timezone.
+                           This time must have a timezone.
         :param time_window: The time window. Rotations that end after this time are not selected.
         :return: None
         """
