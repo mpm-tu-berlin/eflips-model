@@ -497,6 +497,64 @@ class TestScenario(TestGeneral):
         assert scenario.parent_id == 1
         assert parent.children == [scenario]
 
+    def test_select_rotations(self, session, sample_content):
+        orig_len_rot = len(sample_content.rotations)
+
+        sample_content.select_rotations(
+            session,
+            datetime(
+                year=2020,
+                month=1,
+                day=1,
+                hour=12,
+                minute=0,
+                second=0,
+                tzinfo=timezone.utc,
+            ),
+            time_window=timedelta(minutes=700),
+        )
+
+        rotations = session.query(Rotation).count()
+
+        # No rotations should be selected as the time window is too short
+        assert rotations < orig_len_rot
+
+        session.rollback()
+
+        sample_content.select_rotations(
+            session,
+            datetime(
+                year=2020,
+                month=1,
+                day=1,
+                hour=12,
+                minute=0,
+                second=0,
+                tzinfo=timezone.utc,
+            ),
+            time_window=timedelta(minutes=900),
+        )
+
+        rotations = session.query(Rotation).count()
+
+        # All rotations should be selected as the time window is long enough
+        assert rotations == orig_len_rot
+
+    def test_select_rotations_without_providing_timezone(self, session, sample_content):
+        with pytest.raises(ValueError):
+            sample_content.select_rotations(
+                session,
+                datetime(
+                    year=2020,
+                    month=1,
+                    day=1,
+                    hour=12,
+                    minute=0,
+                    second=0,
+                ),
+                time_window=timedelta(minutes=700),
+            )
+
 
 class TestVehicleType(TestGeneral):
     def test_create_vehicle_type(self, session, scenario):
