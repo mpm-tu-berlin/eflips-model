@@ -81,8 +81,11 @@ pytest
 
 ### Documentation
 
-The documentation is generated using [sphinx](https://www.sphinx-doc.org/en/master/). To generate the documentation,
-execute the following command in the root directory of the repository:
+Documentation is available on [Read the Docs](https://eflips-model.readthedocs.io/en/latest/).
+
+To locally create the documentaiton from the docstrings in the code
+using [sphinx-autoapi](https://sphinx-autoapi.readthedocs.io/en/latest/), you can create the documentation execute the
+following command in the root directory of the repository:
 
 ```bash
 sphinx-build doc/ doc/_build -W
