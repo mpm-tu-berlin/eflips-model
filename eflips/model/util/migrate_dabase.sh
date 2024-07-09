@@ -23,10 +23,10 @@ if [ -z "$DATABASE_URL" ]; then
     exit 1
   fi
 else
-  DATABASE_URL=$(echo $DATABASE_URL | sed 's/postgresql:\/\///')
-  DATABASE_USER=$(echo $DATABASE_URL | cut -d ':' -f 1)
-  DATABASE_PASSWORD=$(echo $DATABASE_URL | cut -d '@' -f 1)
-  DATABASE_NAME=$(echo $DATABASE_URL | cut -d '/' -f 2)
+  DATABASE_URL_FOR_PARSING=$(echo $DATABASE_URL | sed 's/postgresql:\/\///')
+  DATABASE_USER=$(echo $DATABASE_URL_FOR_PARSING | cut -d ':' -f 1)
+  DATABASE_PASSWORD=$(echo $DATABASE_URL_FOR_PARSING | cut -d '@' -f 1)
+  DATABASE_NAME=$(echo $DATABASE_URL_FOR_PARSING | cut -d '/' -f 2)
 fi
 
 
@@ -52,14 +52,15 @@ psql -U $DATABASE_USER -d $DATABASE_NAME -c "CREATE EXTENSION IF NOT EXISTS \"bt
 psql -U $DATABASE_USER -d $DATABASE_NAME -c "CREATE EXTENSION IF NOT EXISTS \"postgis\";"
 
 # Load the dump into the database
-unxz -c $input_file | psql -U $DATABASE_USER -d $DATABASE_NAME
+# zstd or xz depending on the compression used
+zstd -d -c $input_file | psql -U $DATABASE_USER -d $DATABASE_NAME
 
 
 # Run the migrations (here, the alembic command needs to be run in the directory on level above the one where this script is located)
 PWD=$(pwd)
 cd $(dirname $0)/..
-echo alembic upgrade head
+alembic upgrade head
 cd $PWD
 
 # Export the database to a new file
-pg_dump -U $DATABASE_USER -d $DATABASE_NAME -Fp --no-owner --no-acl | xz --verbose > $output_file
+pg_dump -U $DATABASE_USER -d $DATABASE_NAME -Fp --no-owner --no-acl | zstd -T0 -19 --verbose > $output_file
