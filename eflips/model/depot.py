@@ -138,8 +138,11 @@ class Area(Base):
     """The unique identifier of the depot. Foreign key to :attr:`Depot.id`."""
     depot: Mapped["Depot"] = relationship("Depot", back_populates="areas")
 
-    vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
-    """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
+    vehicle_type_id: Mapped[int] = mapped_column(
+        ForeignKey("VehicleType.id"), nullable=True
+    )
+    """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`.
+    If set, only vehicles of this type can be parked in this area. If null, all vehicle types can be parked."""
     vehicle_type: Mapped["VehicleType"] = relationship(
         "VehicleType", back_populates="areas"
     )
