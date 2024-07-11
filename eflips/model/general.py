@@ -387,7 +387,7 @@ class Scenario(Base):
         # Area <-> Depot, VehicleType
         for area in scenario_copy.areas:
             area.depot_id = depot_id_map[area.depot_id].id
-            area.vehicle_type_id = vehicle_type_id_map[area.vehicle_type_id].id
+            area.vehicle_type_id = vehicle_type_id_map[area.vehicle_type_id].id if area.vehicle_type_id is not None else None
 
         # Process <-> Area is a many-to-many relationship, so we need to update the association table
         for area_process_entry in session.query(AssocAreaProcess):
