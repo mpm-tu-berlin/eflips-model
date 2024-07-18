@@ -16,6 +16,7 @@ from sqlalchemy import (
     Integer,
     Text,
     UUID,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
@@ -899,3 +900,39 @@ class Event(Base):
 
     def __repr__(self) -> str:
         return f"<Event(id={self.id}, event_type={self.event_type}, time_start={self.time_start}, time_end={self.time_end})>"
+
+
+class Consumption(Base):
+    """
+    The Consumption table stores the energy consumption look-up-tables for each vehicle class.
+    """
+
+    __tablename__ = "Consumption"
+    __table_args__ = (UniqueConstraint("scenario_id", "name"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    """The unique identifier of the consumption. Auto-incremented."""
+
+    scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
+    """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="events")
+    """The scenario."""
+
+    name = mapped_column(Text)
+    """A name for the consumption table."""
+
+    vehicle_class_id: Mapped[int] = mapped_column(
+        ForeignKey("VehicleClass.id"), nullable=False
+    )
+    """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
+
+    vehicle_class: Mapped[VehicleClass] = relationship(
+        "VehicleClass", back_populates="consumption"
+    )
+    """The vehicle class."""
+
+    columns = mapped_column(postgresql.JSONB)
+    """
+    A JSON-encoded list of column name strings. The order of these should match the order of the values for each row
+    in the data_points
+    """
