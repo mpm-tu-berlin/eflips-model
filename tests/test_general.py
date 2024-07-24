@@ -282,7 +282,6 @@ class TestGeneral:
             name="Test Area",
             depot=depot,
             area_type=AreaType.LINE,
-            row_count=2,
             capacity=6,
         )
         session.add(area)
