@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-model"
-version = "5.0.0"
+version = "5.1.0"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
 	"Ludger Heide <ludger.heide@tu-berlin.de>",
@@ -19,6 +19,8 @@ sqlalchemy = "^2.0.23"
 alembic = "^1.12.1"
 geoalchemy2 = "^0.14.2"
 psycopg2-binary = "^2.9.9"
+pandas = "^2.2.2"
+numpy = "^2.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -30,6 +32,7 @@ pytest-pycharm = "^0.7.0"
 pre-commit = "^3.5.0"
 sphinx-paramlinks = "^0.6.0"
 types-psycopg2 = "^2.9.21.20240417"
+pandas-stubs = "^2.2.2"
 
 [build-system]
 requires = ["poetry-core"]

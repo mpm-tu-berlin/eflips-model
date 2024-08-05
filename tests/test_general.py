@@ -31,7 +31,7 @@ from eflips.model import (
     VehicleType,
     setup_database,
 )
-from eflips.model.general import AssocVehicleTypeVehicleClass
+from eflips.model.general import AssocVehicleTypeVehicleClass, ConsumptionLut
 
 
 class TestGeneral:
@@ -66,6 +66,7 @@ class TestGeneral:
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
@@ -81,8 +82,31 @@ class TestGeneral:
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
         session.add(vehicle_type)
+
+        # Add a vehicle type with a consumptio table
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Test Vehicle Type 2",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+            empty_mass=1000,
+            allowed_mass=2000,
+        )
+        vehicle_class = VehicleClass(
+            scenario=scenario,
+            name="Consumption lut from Test Vehicle Type 2",
+            vehicle_types=[vehicle_type],
+        )
+        session.add(vehicle_class)
+        consumption = ConsumptionLut.from_vehicle_type(vehicle_type, vehicle_class)
+        session.add(consumption)
+        session.add(vehicle_type)
+
+        session.flush()
 
         # Add a VehicleClass
         vehicle_class = VehicleClass(
@@ -454,20 +478,20 @@ class TestScenario(TestGeneral):
     def test_delete_child_scenario(self, session, sample_content):
         cloned_scenario = sample_content.clone(session)
         assert session.query(Scenario).count() == 2
-        assert session.query(VehicleType).count() == 4
+        assert session.query(VehicleType).count() == 6
         assert session.query(BatteryType).count() == 2
         assert session.query(StopTime).count() == 180
         session.delete(cloned_scenario)
         session.commit()
         assert session.query(Scenario).count() == 1
-        assert session.query(VehicleType).count() == 2
+        assert session.query(VehicleType).count() == 3
         assert session.query(BatteryType).count() == 1
         assert session.query(StopTime).count() == 90
 
     def test_delete_parent_scenario(self, session, sample_content):
         cloned_scenario = sample_content.clone(session)
         assert session.query(Scenario).count() == 2
-        assert session.query(VehicleType).count() == 4
+        assert session.query(VehicleType).count() == 6
         assert session.query(BatteryType).count() == 2
         assert session.query(StopTime).count() == 180
 
@@ -476,7 +500,7 @@ class TestScenario(TestGeneral):
         session.delete(sample_content)
 
         assert session.query(Scenario).count() == 1
-        assert session.query(VehicleType).count() == 2
+        assert session.query(VehicleType).count() == 3
         assert session.query(BatteryType).count() == 1
         assert session.query(StopTime).count() == 90
 
@@ -564,6 +588,7 @@ class TestVehicleType(TestGeneral):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
         session.add(vehicle_type)
         session.commit()
@@ -587,6 +612,7 @@ class TestVehicleType(TestGeneral):
             width=10,
             height=10,
             empty_mass=12000,
+            consumption=1,
         )
         session.add(vehicle_type)
         session.commit()
@@ -600,6 +626,7 @@ class TestVehicleType(TestGeneral):
                     battery_capacity=battery_capacity,
                     charging_curve=[[0, 150], [1, 150]],
                     opportunity_charging_capable=True,
+                    consumption=1,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -616,6 +643,7 @@ class TestVehicleType(TestGeneral):
                 battery_capacity_reserve=-10,
                 charging_curve=[[0, 150], [1, 150]],
                 opportunity_charging_capable=True,
+                consumption=1,
             )
             session.add(vehicle_type)
             session.commit()
@@ -629,6 +657,7 @@ class TestVehicleType(TestGeneral):
             battery_capacity_reserve=0,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
         session.add(vehicle_type)
         session.commit()
@@ -643,6 +672,7 @@ class TestVehicleType(TestGeneral):
                     charging_curve=[[0, 150], [1, 150]],
                     charging_efficiency=charging_efficiency,
                     opportunity_charging_capable=True,
+                    consumption=1,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -659,6 +689,7 @@ class TestVehicleType(TestGeneral):
                 charging_curve=[[0, 150], [1, 150]],
                 opportunity_charging_capable=True,
                 minimum_charging_power=-10,
+                consumption=1,
             )
             session.add(vehicle_type)
             session.commit()
@@ -673,6 +704,7 @@ class TestVehicleType(TestGeneral):
                     charging_curve=[[0, 150], [1, 150]],
                     opportunity_charging_capable=True,
                     empty_mass=empty_weight,
+                    consumption=1,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -705,6 +737,7 @@ class TestVehicleClass(TestGeneral):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
         session.add(vehicle_type)
 
@@ -733,6 +766,7 @@ class TestVehicleClass(TestGeneral):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
         session.add(vehicle_type)
 

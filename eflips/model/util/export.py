@@ -7,7 +7,6 @@ import gzip
 import os
 import pickle
 from argparse import ArgumentParser
-from copy import deepcopy
 from typing import List, Dict
 
 import psycopg2
@@ -16,16 +15,11 @@ from sqlalchemy.orm import (
     class_mapper,
     make_transient,
     Session,
-    joinedload,
-    subqueryload,
-    selectinload,
-    make_transient_to_detached,
     RelationshipDirection,
 )
 
 from eflips.model import Base
 from eflips.model.depot import Area as Area
-from eflips.model.depot import AreaType as AreaType
 from eflips.model.depot import AssocAreaProcess as AssocAreaProcess
 from eflips.model.depot import AssocPlanProcess as AssocPlanProcess
 from eflips.model.depot import Depot as Depot
@@ -34,15 +28,14 @@ from eflips.model.depot import Process as Process
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
 )
+from eflips.model.general import ConsumptionLut as ConsumptionLut
 from eflips.model.general import BatteryType as BatteryType
 from eflips.model.general import Event as Event
-from eflips.model.general import EventType as EventType
 from eflips.model.general import Scenario as Scenario
 from eflips.model.general import Vehicle as Vehicle
 from eflips.model.general import VehicleClass as VehicleClass
 from eflips.model.general import VehicleType as VehicleType
 from eflips.model.network import AssocRouteStation as AssocRouteStation
-from eflips.model.network import ChargeType as ChargeType
 from eflips.model.network import Line as Line
 from eflips.model.network import Route as Route
 from eflips.model.network import Station as Station
@@ -68,6 +61,7 @@ ALL_CLASSES_WITH_SCENARIO_ID = [
     Area,
     Process,
     AssocPlanProcess,
+    ConsumptionLut,
 ]
 ALL_PURE_ASSOC_CLASSES = [AssocAreaProcess, AssocVehicleTypeVehicleClass]
 ALL_TABLE_CLASSES = ALL_CLASSES_WITH_SCENARIO_ID + ALL_PURE_ASSOC_CLASSES + [Scenario]
