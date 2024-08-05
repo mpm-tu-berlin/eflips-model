@@ -140,8 +140,8 @@ class Scenario(Base):
     events: Mapped[List["Event"]] = relationship(
         "Event", back_populates="scenario", cascade="all, delete"
     )
-    consumptions: Mapped[List["Consumption"]] = relationship(
-        "Consumption", back_populates="scenario", cascade="all, delete"
+    consumption_luts: Mapped[List["ConsumptionLut"]] = relationship(
+        "ConsumptionLut", back_populates="scenario", cascade="all, delete"
     )
     depots: Mapped[List["Depot"]] = relationship(
         "Depot", back_populates="scenario", cascade="all, delete"
@@ -271,8 +271,8 @@ class Scenario(Base):
                 self._copy_object(event, session, scenario_copy)
                 event_id_map[original_id] = event
 
-            consumption_id_map: Dict[int, "Consumption"] = {}
-            for consumption in self.consumptions:
+            consumption_id_map: Dict[int, "ConsumptionLut"] = {}
+            for consumption in self.consumption_luts:
                 original_id = consumption.id
                 self._copy_object(consumption, session, scenario_copy)
                 consumption_id_map[original_id] = consumption
@@ -390,7 +390,7 @@ class Scenario(Base):
                 event.vehicle_type_id = vehicle_type_id_map[event.vehicle_type_id].id
 
         # Consumption <-> VehicleType
-        for consumption in scenario_copy.consumptions:
+        for consumption in scenario_copy.consumption_luts:
             consumption.vehicle_type_id = vehicle_type_id_map[consumption.vehicle_type_id].id
 
         # Depot <-> Plan
@@ -605,7 +605,7 @@ class VehicleType(Base):
     Either this or consumption_lut must be specified. Both cannot exist at the same time.
     """
 
-    consumption_lut: Mapped["Consumption"] = relationship("Consumption", back_populates="vehicle_type")
+    consumption_lut: Mapped["ConsumptionLut"] = relationship("ConsumptionLut", back_populates="vehicle_type")
     """
     A consumption look up table.
     
@@ -939,7 +939,7 @@ class Event(Base):
         return f"<Event(id={self.id}, event_type={self.event_type}, time_start={self.time_start}, time_end={self.time_end})>"
 
 
-class Consumption(Base):
+class ConsumptionLut(Base):
     """
     The Consumption table stores the energy consumption look-up-tables for each vehicle class.
 
@@ -948,15 +948,15 @@ class Consumption(Base):
     the session database.
     """
 
-    __tablename__ = "Consumption"
-    __table_args__ = (UniqueConstraint("scenario_id", "name"),)
+    __tablename__ = "ConsumptionLut"
+    __table_args__ = (UniqueConstraint("scenario_id", "vehicle_type_id"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the consumption. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
     """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
-    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="consumptions")
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="consumption_luts")
     """The scenario."""
 
     name = mapped_column(Text)
@@ -1089,20 +1089,20 @@ class Consumption(Base):
             temp, speed, lol = combo
             duration = distance / speed * 60
             mass = (lol + 1) * delta_mass
-            consumption = Consumption.calc_consumption(distance, temp, mass, duration)
+            consumption = ConsumptionLut.calc_consumption(distance, temp, mass, duration)
             consumption_list.append(consumption)
 
         # Create table and return
         consumption_table = pd.DataFrame(
             combinations,
             columns=[
-                Consumption.T_AMB,
-                Consumption.SPEED,
-                Consumption.LEVEL_OF_LOADING,
+                ConsumptionLut.T_AMB,
+                ConsumptionLut.SPEED,
+                ConsumptionLut.LEVEL_OF_LOADING,
             ],
         )
-        consumption_table[Consumption.INCLINE] = incline
-        consumption_table[Consumption.CONSUMPTION] = consumption_list
+        consumption_table[ConsumptionLut.INCLINE] = incline
+        consumption_table[ConsumptionLut.CONSUMPTION] = consumption_list
 
         return consumption_table
 
@@ -1111,7 +1111,7 @@ class Consumption(Base):
         df: pd.DataFrame,
         scenario_or_id: Scenario | int,
         vehicle_type_or_id: VehicleType | int,
-    ) -> "Consumption":
+    ) -> "ConsumptionLut":
         # Expand the scenario to an int and a Scenario object
         if isinstance(scenario_or_id, Scenario):
             scenario = scenario_or_id
@@ -1137,14 +1137,14 @@ class Consumption(Base):
             )
 
         columns = [
-            Consumption.INCLINE,
-            Consumption.T_AMB,
-            Consumption.LEVEL_OF_LOADING,
-            Consumption.SPEED,
+            ConsumptionLut.INCLINE,
+            ConsumptionLut.T_AMB,
+            ConsumptionLut.LEVEL_OF_LOADING,
+            ConsumptionLut.SPEED,
         ]
         data_points = np.array(df.loc[:, columns].values).tolist()
-        values = np.array(df.loc[:, Consumption.CONSUMPTION].values).tolist()
-        return Consumption(
+        values = np.array(df.loc[:, ConsumptionLut.CONSUMPTION].values).tolist()
+        return ConsumptionLut(
             scenario_id=scenario_id,
             scenario=scenario,
             vehicle_type_id=vehicle_type_id,
@@ -1155,6 +1155,6 @@ class Consumption(Base):
         )
 
     @classmethod
-    def for_vehicle_type(cls, vehicle_type: VehicleType) -> "Consumption":
+    def for_vehicle_type(cls, vehicle_type: VehicleType) -> "ConsumptionLut":
         df = cls.table_generator(vehicle_type)
         return cls.df_to_consumption_obj(df, vehicle_type.scenario, vehicle_type)

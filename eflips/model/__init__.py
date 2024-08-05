@@ -54,7 +54,7 @@ from eflips.model.general import EventType as EventType
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
 )
-from eflips.model.general import Consumption as Consumption
+from eflips.model.general import ConsumptionLut as Consumption
 
 from eflips.model.network import ChargeType as ChargeType
 from eflips.model.network import Line as Line

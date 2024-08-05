@@ -28,7 +28,7 @@ from eflips.model.depot import Process as Process
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
 )
-from eflips.model.general import Consumption as Consumption
+from eflips.model.general import ConsumptionLut as ConsumptionLut
 from eflips.model.general import BatteryType as BatteryType
 from eflips.model.general import Event as Event
 from eflips.model.general import Scenario as Scenario
@@ -61,7 +61,7 @@ ALL_CLASSES_WITH_SCENARIO_ID = [
     Area,
     Process,
     AssocPlanProcess,
-    Consumption
+    ConsumptionLut
 ]
 ALL_PURE_ASSOC_CLASSES = [AssocAreaProcess, AssocVehicleTypeVehicleClass]
 ALL_TABLE_CLASSES = ALL_CLASSES_WITH_SCENARIO_ID + ALL_PURE_ASSOC_CLASSES + [Scenario]

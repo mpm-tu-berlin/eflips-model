@@ -31,7 +31,7 @@ from eflips.model import (
     VehicleType,
     setup_database,
 )
-from eflips.model.general import AssocVehicleTypeVehicleClass, Consumption
+from eflips.model.general import AssocVehicleTypeVehicleClass, ConsumptionLut
 
 
 class TestGeneral:
@@ -96,7 +96,7 @@ class TestGeneral:
             empty_mass=1000,
             allowed_mass=2000,
         )
-        consumption = Consumption.for_vehicle_type(vehicle_type)
+        consumption = ConsumptionLut.for_vehicle_type(vehicle_type)
         vehicle_type.consumption_lut = consumption
         session.add(consumption)
         session.add(vehicle_type)
