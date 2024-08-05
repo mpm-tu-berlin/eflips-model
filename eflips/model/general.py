@@ -962,7 +962,10 @@ class ConsumptionLut(Base):
     """
 
     __tablename__ = "ConsumptionLut"
-    __table_args__ = (UniqueConstraint("scenario_id", "vehicle_class_id"),)
+    __table_args__ = (
+        UniqueConstraint("scenario_id", "vehicle_class_id"),
+        UniqueConstraint("scenario_id", "name"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the consumption. Auto-incremented."""
