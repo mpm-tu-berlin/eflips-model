@@ -26,7 +26,7 @@ def upgrade() -> None:
         sa.Column("scenario_id", sa.BigInteger(), nullable=False),
         sa.Column("name", sa.Text(), nullable=True),
         sa.Column("vehicle_class_id", sa.BigInteger(), nullable=False),
-        sa.Column("columns", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("columns", postgresql.JSONB(astext_type=sa.Text()), nullable=True),  # type: ignore
         sa.Column(
             "data_points", postgresql.ARRAY(sa.Float(), dimensions=2), nullable=False
         ),
