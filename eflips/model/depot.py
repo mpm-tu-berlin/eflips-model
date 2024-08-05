@@ -120,7 +120,16 @@ class AreaType(PyEnum):
 
 
 class Area(Base):
-    """An Area represents a certain area in a depot, where at least one process is available."""
+    """
+    An Area represents a certain area in a depot, where at least one process is available.
+
+    All slots in the area may be directly accessible, or the area may be a line area where vehicles are parked in a
+    line. In such an area, only the first vehicle in the line is directly accessible, the second vehicle can only be
+    removed after the first vehicle has been removed, and so on. However vehicles can only been added to the end of the
+    line. So if it's filled up, *all* vehicles have to be removed to add a new one. If there's one slot left and one
+    vehicle is removed, there's still only one slot left, not two.
+
+    """
 
     __tablename__ = "Area"
 
@@ -157,24 +166,13 @@ class Area(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the area."""
 
-    row_count: Mapped[int] = mapped_column(Integer, nullable=True)
-    """The number of rows in the area. Null if the area is not a line area."""
-
-    row_count_constraint = CheckConstraint(
-        "(area_type = 'LINE' AND row_count > 0) OR"
-        "(area_type = 'DIRECT_TWOSIDE' AND row_count IS NULL) OR"
-        "(area_type = 'DIRECT_ONESIDE' AND row_count IS NULL)",
-        name="row_count_check",
-    )
-    _table_args_list.append(row_count_constraint)
-
     capacity: Mapped[int] = mapped_column(Integer)
 
     capacity_constraint = CheckConstraint(
         "capacity > 0 AND "
         "((area_type = 'DIRECT_TWOSIDE' AND capacity % 2 = 0) "
         "OR (area_type = 'DIRECT_ONESIDE') "
-        "OR (area_type = 'LINE' AND capacity % row_count = 0))",
+        "OR (area_type = 'LINE'))",
         name="capacity_validity_check",
     )
 

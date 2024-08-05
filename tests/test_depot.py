@@ -49,7 +49,6 @@ class TestDepot(TestGeneral):
             name="Test Area",
             depot=depot,
             area_type=AreaType.LINE,
-            row_count=2,
             capacity=6,
         )
         session.add(area)
@@ -121,7 +120,6 @@ class TestArea(TestDepot):
             depot=depot_with_content,
             name="line area",
             area_type=AreaType.LINE,
-            row_count=2,
             capacity=6,
         )
 
@@ -158,22 +156,7 @@ class TestArea(TestDepot):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
-            consumption=1,
         )
-
-        with pytest.raises(sqlalchemy.exc.IntegrityError):
-            area = Area(
-                scenario=scenario,
-                name="Test Area 1",
-                depot=depot_with_content,
-                area_type=AreaType.LINE,
-                row_count=2,
-                capacity=5,
-            )
-            session.add(area)
-            area.vehicle_type = vehicle_type
-            session.commit()
-        session.rollback()
 
         # Test direct area with negative capacity
         with pytest.raises(sqlalchemy.exc.IntegrityError):
