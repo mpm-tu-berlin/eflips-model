@@ -61,7 +61,7 @@ ALL_CLASSES_WITH_SCENARIO_ID = [
     Area,
     Process,
     AssocPlanProcess,
-    ConsumptionLut
+    ConsumptionLut,
 ]
 ALL_PURE_ASSOC_CLASSES = [AssocAreaProcess, AssocVehicleTypeVehicleClass]
 ALL_TABLE_CLASSES = ALL_CLASSES_WITH_SCENARIO_ID + ALL_PURE_ASSOC_CLASSES + [Scenario]

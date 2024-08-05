@@ -15,6 +15,7 @@ class ConsistencyWarning(UserWarning):
 
     pass
 
+
 def setup_database(engine: sqlalchemy.Engine) -> None:
     """
     Use this method to create a new database from scratch.
@@ -54,7 +55,7 @@ from eflips.model.general import EventType as EventType
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
 )
-from eflips.model.general import ConsumptionLut as Consumption
+from eflips.model.general import ConsumptionLut as ConsumptionLut
 
 from eflips.model.network import ChargeType as ChargeType
 from eflips.model.network import Line as Line
@@ -75,4 +76,3 @@ from eflips.model.depot import AreaType as AreaType
 from eflips.model.depot import Process as Process
 from eflips.model.depot import AssocPlanProcess as AssocPlanProcess
 from eflips.model.depot import AssocAreaProcess as AssocAreaProcess
-

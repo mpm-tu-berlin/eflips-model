@@ -311,8 +311,6 @@ class Rotation(Base):
         return f"<Rotation(id={self.id}, name={self.name})>"
 
 
-
-
 @event.listens_for(Rotation, "before_insert")
 @event.listens_for(Rotation, "before_update")
 def check_rotation_before_commit(_: Any, __: Any, target: Rotation) -> None:

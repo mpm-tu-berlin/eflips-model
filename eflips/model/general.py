@@ -19,7 +19,8 @@ from sqlalchemy import (
     Integer,
     Text,
     UUID,
-    UniqueConstraint, event,
+    UniqueConstraint,
+    event,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
@@ -391,7 +392,9 @@ class Scenario(Base):
 
         # Consumption <-> VehicleType
         for consumption in scenario_copy.consumption_luts:
-            consumption.vehicle_type_id = vehicle_type_id_map[consumption.vehicle_type_id].id
+            consumption.vehicle_class_id = vehicle_class_id_map[
+                consumption.vehicle_class_id
+            ].id
 
         # Depot <-> Plan
         for depot in scenario_copy.depots:
@@ -605,13 +608,6 @@ class VehicleType(Base):
     Either this or consumption_lut must be specified. Both cannot exist at the same time.
     """
 
-    consumption_lut: Mapped["ConsumptionLut"] = relationship("ConsumptionLut", back_populates="vehicle_type")
-    """
-    A consumption look up table.
-    
-    Either this or consumption must be specified. Both cannot exist at the same time.
-    """
-
     vehicles: Mapped[List["Vehicle"]] = relationship(
         "Vehicle", back_populates="vehicle_type"
     )
@@ -644,6 +640,7 @@ class VehicleType(Base):
     def __repr__(self) -> str:
         return f"<VehicleType(id={self.id}, name={self.name})>"
 
+
 @event.listens_for(VehicleType, "before_insert")
 @event.listens_for(VehicleType, "before_update")
 def check_vehicle_type_before_commit(_: Any, __: Any, target: VehicleType) -> None:
@@ -654,8 +651,15 @@ def check_vehicle_type_before_commit(_: Any, __: Any, target: VehicleType) -> No
     :return: Nothing. Raises an exception if something is wrong.
     """
 
-    warnings.warn("A VehicleType may have consumption xor consumption_lut, but not both.", ConsistencyWarning)
-    warnings.warn("A VehicleType must have either consumption or consumption_lut.", ConsistencyWarning)
+    warnings.warn(
+        "A VehicleType may have consumption xor consumption_lut, but not both.",
+        ConsistencyWarning,
+    )
+    warnings.warn(
+        "A VehicleType must have either consumption or consumption_lut.",
+        ConsistencyWarning,
+    )
+
 
 class BatteryType(Base):
     __tablename__ = "BatteryType"
@@ -759,6 +763,15 @@ class VehicleClass(Base):
         secondary="AssocVehicleTypeVehicleClass",
         back_populates="vehicle_classes",
     )
+
+    consumption_lut: Mapped["ConsumptionLut"] = relationship(
+        "ConsumptionLut", back_populates="vehicle_class"
+    )
+    """
+    A consumption look up table.
+
+    Either this or consumption must be specified. Both cannot exist at the same time.
+    """
 
     assoc_vehicle_type_vehicle_classes: Mapped[
         "AssocVehicleTypeVehicleClass"
@@ -949,26 +962,28 @@ class ConsumptionLut(Base):
     """
 
     __tablename__ = "ConsumptionLut"
-    __table_args__ = (UniqueConstraint("scenario_id", "vehicle_type_id"),)
+    __table_args__ = (UniqueConstraint("scenario_id", "vehicle_class_id"),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the consumption. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
     """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
-    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="consumption_luts")
+    scenario: Mapped[Scenario] = relationship(
+        "Scenario", back_populates="consumption_luts"
+    )
     """The scenario."""
 
     name = mapped_column(Text)
     """A name for the consumption table."""
 
-    vehicle_type_id: Mapped[int] = mapped_column(
-        ForeignKey("VehicleType.id"), nullable=False
+    vehicle_class_id: Mapped[int] = mapped_column(
+        ForeignKey("VehicleClass.id"), nullable=False
     )
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleClass.id`."""
 
-    vehicle_type: Mapped[VehicleType] = relationship(
-        "VehicleType", back_populates="consumption_lut"
+    vehicle_class: Mapped[VehicleClass] = relationship(
+        "VehicleClass", back_populates="consumption_lut"
     )
     """The vehicle class."""
 
@@ -979,14 +994,16 @@ class ConsumptionLut(Base):
     """
 
     data_points: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Float, dimensions=2), nullable=False)
+        postgresql.ARRAY(Float, dimensions=2), nullable=False
+    )
     """
     A list of data points. These are the coordinates of the data point. Its value is stored in the `value` column.
     The order of columns is the entry in the `columns` column.
     """
 
     values: Mapped[List[float]] = mapped_column(
-        postgresql.ARRAY(Float, dimensions=1), nullable=False)
+        postgresql.ARRAY(Float, dimensions=1), nullable=False
+    )
     """
     A list of consumption values in kWh/km. The corresponding temperatures, inclines etc. are stored in the 
     `data_points` column.
@@ -1089,7 +1106,9 @@ class ConsumptionLut(Base):
             temp, speed, lol = combo
             duration = distance / speed * 60
             mass = (lol + 1) * delta_mass
-            consumption = ConsumptionLut.calc_consumption(distance, temp, mass, duration)
+            consumption = ConsumptionLut.calc_consumption(
+                distance, temp, mass, duration
+            )
             consumption_list.append(consumption)
 
         # Create table and return
@@ -1110,7 +1129,7 @@ class ConsumptionLut(Base):
     def df_to_consumption_obj(
         df: pd.DataFrame,
         scenario_or_id: Scenario | int,
-        vehicle_type_or_id: VehicleType | int,
+        vehicle_class_or_id: VehicleClass | int,
     ) -> "ConsumptionLut":
         # Expand the scenario to an int and a Scenario object
         if isinstance(scenario_or_id, Scenario):
@@ -1125,12 +1144,12 @@ class ConsumptionLut(Base):
             )
 
         # Expand the VehicleType to an int and a VehicleType object
-        if isinstance(vehicle_type_or_id, VehicleType):
-            vehicle_type = vehicle_type_or_id
-            vehicle_type_id = vehicle_type.id
-        elif isinstance(vehicle_type_or_id, int):
-            vehicle_type_id = vehicle_type_or_id
-            vehicle_type = None
+        if isinstance(vehicle_class_or_id, VehicleClass):
+            vehicle_class = vehicle_class_or_id
+            vehicle_class_id = vehicle_class.id
+        elif isinstance(vehicle_class_or_id, int):
+            vehicle_class_id = vehicle_class_or_id
+            vehicle_class = None
         else:
             raise ValueError(
                 "vehicle_type_or_id must be either a VehicleType object or an int."
@@ -1147,14 +1166,16 @@ class ConsumptionLut(Base):
         return ConsumptionLut(
             scenario_id=scenario_id,
             scenario=scenario,
-            vehicle_type_id=vehicle_type_id,
-            vehicle_type=vehicle_type,
+            vehicle_class_id=vehicle_class_id,
+            vehicle_class=vehicle_class,
             columns=columns,
             data_points=data_points,
             values=values,
         )
 
     @classmethod
-    def for_vehicle_type(cls, vehicle_type: VehicleType) -> "ConsumptionLut":
+    def from_vehicle_type(
+        cls, vehicle_type: VehicleType, vehicle_class: VehicleClass
+    ) -> "ConsumptionLut":
         df = cls.table_generator(vehicle_type)
-        return cls.df_to_consumption_obj(df, vehicle_type.scenario, vehicle_type)
+        return cls.df_to_consumption_obj(df, vehicle_type.scenario, vehicle_class)

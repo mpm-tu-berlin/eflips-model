@@ -66,7 +66,7 @@ class TestGeneral:
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
-            consumption=1
+            consumption=1,
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
@@ -82,7 +82,7 @@ class TestGeneral:
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
-            consumption=1
+            consumption=1,
         )
         session.add(vehicle_type)
 
@@ -96,14 +96,17 @@ class TestGeneral:
             empty_mass=1000,
             allowed_mass=2000,
         )
-        consumption = ConsumptionLut.for_vehicle_type(vehicle_type)
-        vehicle_type.consumption_lut = consumption
+        vehicle_class = VehicleClass(
+            scenario=scenario,
+            name="Consumption lut from Test Vehicle Type 2",
+            vehicle_types=[vehicle_type],
+        )
+        session.add(vehicle_class)
+        consumption = ConsumptionLut.from_vehicle_type(vehicle_type, vehicle_class)
         session.add(consumption)
         session.add(vehicle_type)
 
         session.flush()
-
-
 
         # Add a VehicleClass
         vehicle_class = VehicleClass(
@@ -623,7 +626,7 @@ class TestVehicleType(TestGeneral):
                     battery_capacity=battery_capacity,
                     charging_curve=[[0, 150], [1, 150]],
                     opportunity_charging_capable=True,
-            consumption=1,
+                    consumption=1,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -640,7 +643,7 @@ class TestVehicleType(TestGeneral):
                 battery_capacity_reserve=-10,
                 charging_curve=[[0, 150], [1, 150]],
                 opportunity_charging_capable=True,
-            consumption=1,
+                consumption=1,
             )
             session.add(vehicle_type)
             session.commit()
@@ -654,7 +657,7 @@ class TestVehicleType(TestGeneral):
             battery_capacity_reserve=0,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
-            consumption=1
+            consumption=1,
         )
         session.add(vehicle_type)
         session.commit()
@@ -669,7 +672,7 @@ class TestVehicleType(TestGeneral):
                     charging_curve=[[0, 150], [1, 150]],
                     charging_efficiency=charging_efficiency,
                     opportunity_charging_capable=True,
-            consumption=1,
+                    consumption=1,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -686,7 +689,7 @@ class TestVehicleType(TestGeneral):
                 charging_curve=[[0, 150], [1, 150]],
                 opportunity_charging_capable=True,
                 minimum_charging_power=-10,
-            consumption=1,
+                consumption=1,
             )
             session.add(vehicle_type)
             session.commit()
@@ -701,7 +704,7 @@ class TestVehicleType(TestGeneral):
                     charging_curve=[[0, 150], [1, 150]],
                     opportunity_charging_capable=True,
                     empty_mass=empty_weight,
-            consumption=1,
+                    consumption=1,
                 )
                 session.add(vehicle_type)
                 session.commit()
@@ -734,7 +737,7 @@ class TestVehicleClass(TestGeneral):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
-            consumption=1
+            consumption=1,
         )
         session.add(vehicle_type)
 
@@ -763,7 +766,7 @@ class TestVehicleClass(TestGeneral):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
-            consumption=1
+            consumption=1,
         )
         session.add(vehicle_type)
 
