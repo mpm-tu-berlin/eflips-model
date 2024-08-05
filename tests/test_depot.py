@@ -61,6 +61,7 @@ class TestDepot(TestGeneral):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
         area.vehicle_type = test_vehicle_type
 
@@ -112,6 +113,7 @@ class TestArea(TestDepot):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
 
         line_area = Area(
@@ -156,6 +158,7 @@ class TestArea(TestDepot):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=True,
+            consumption=1,
         )
 
         with pytest.raises(sqlalchemy.exc.IntegrityError):

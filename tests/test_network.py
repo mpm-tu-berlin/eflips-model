@@ -388,6 +388,7 @@ class TestRoute(TestGeneral):
             battery_capacity=100,
             charging_curve=[[0, 150], [1, 150]],
             opportunity_charging_capable=False,
+            consumption=1
         )
         session.add(vehicle_type)
 

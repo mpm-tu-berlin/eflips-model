@@ -1,8 +1,11 @@
 import uuid
+import warnings
 from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
+from itertools import product
 from typing import Any, Dict, List, TYPE_CHECKING, Union
-
+import numpy as np
+import pandas as pd
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -16,13 +19,13 @@ from sqlalchemy import (
     Integer,
     Text,
     UUID,
-    UniqueConstraint,
+    UniqueConstraint, event,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, Session
 
-from eflips.model import Base
+from eflips.model import Base, ConsistencyWarning
 from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
 from eflips.model.schedule import Rotation, Trip, StopTime
 
@@ -136,6 +139,9 @@ class Scenario(Base):
     """A list of events."""
     events: Mapped[List["Event"]] = relationship(
         "Event", back_populates="scenario", cascade="all, delete"
+    )
+    consumptions: Mapped[List["Consumption"]] = relationship(
+        "Consumption", back_populates="scenario", cascade="all, delete"
     )
     depots: Mapped[List["Depot"]] = relationship(
         "Depot", back_populates="scenario", cascade="all, delete"
@@ -265,6 +271,12 @@ class Scenario(Base):
                 self._copy_object(event, session, scenario_copy)
                 event_id_map[original_id] = event
 
+            consumption_id_map: Dict[int, "Consumption"] = {}
+            for consumption in self.consumptions:
+                original_id = consumption.id
+                self._copy_object(consumption, session, scenario_copy)
+                consumption_id_map[original_id] = consumption
+
             depot_id_map: Dict[int, "Depot"] = {}
             for depot in self.depots:
                 original_id = depot.id
@@ -376,6 +388,10 @@ class Scenario(Base):
         for event in scenario_copy.events:
             if event.vehicle_type_id is not None:
                 event.vehicle_type_id = vehicle_type_id_map[event.vehicle_type_id].id
+
+        # Consumption <-> VehicleType
+        for consumption in scenario_copy.consumptions:
+            consumption.vehicle_type_id = vehicle_type_id_map[consumption.vehicle_type_id].id
 
         # Depot <-> Plan
         for depot in scenario_copy.depots:
@@ -585,6 +601,15 @@ class VehicleType(Base):
     """
     The vehicle's energy consumption in kWh/km. This is used to calculate the energy consumption of a trip. Can
     be None if we are using more detailed consumption models.
+    
+    Either this or consumption_lut must be specified. Both cannot exist at the same time.
+    """
+
+    consumption_lut: Mapped["Consumption"] = relationship("Consumption", back_populates="vehicle_type")
+    """
+    A consumption look up table.
+    
+    Either this or consumption must be specified. Both cannot exist at the same time.
     """
 
     vehicles: Mapped[List["Vehicle"]] = relationship(
@@ -619,6 +644,18 @@ class VehicleType(Base):
     def __repr__(self) -> str:
         return f"<VehicleType(id={self.id}, name={self.name})>"
 
+@event.listens_for(VehicleType, "before_insert")
+@event.listens_for(VehicleType, "before_update")
+def check_vehicle_type_before_commit(_: Any, __: Any, target: VehicleType) -> None:
+    """
+    A VehicleType may hav consumption xor consumption_lut, but not both.
+
+    :param target: A VehicleType object
+    :return: Nothing. Raises an exception if something is wrong.
+    """
+
+    warnings.warn("A VehicleType may have consumption xor consumption_lut, but not both.", ConsistencyWarning)
+    warnings.warn("A VehicleType must have either consumption or consumption_lut.", ConsistencyWarning)
 
 class BatteryType(Base):
     __tablename__ = "BatteryType"
@@ -905,6 +942,10 @@ class Event(Base):
 class Consumption(Base):
     """
     The Consumption table stores the energy consumption look-up-tables for each vehicle class.
+
+    Uses a regression model generated from real world electric bus data to create a consumption table in
+    django-simba format (temperature, speed, level of loading, incline, consumption) and exports it into
+    the session database.
     """
 
     __tablename__ = "Consumption"
@@ -915,19 +956,19 @@ class Consumption(Base):
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
     """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
-    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="events")
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="consumptions")
     """The scenario."""
 
     name = mapped_column(Text)
     """A name for the consumption table."""
 
-    vehicle_class_id: Mapped[int] = mapped_column(
-        ForeignKey("VehicleClass.id"), nullable=False
+    vehicle_type_id: Mapped[int] = mapped_column(
+        ForeignKey("VehicleType.id"), nullable=False
     )
-    """The unique identifier of the vehicle class. Foreign key to :attr:`VehicleClass.id`."""
+    """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleClass.id`."""
 
-    vehicle_class: Mapped[VehicleClass] = relationship(
-        "VehicleClass", back_populates="consumption"
+    vehicle_type: Mapped[VehicleType] = relationship(
+        "VehicleType", back_populates="consumption_lut"
     )
     """The vehicle class."""
 
@@ -936,3 +977,184 @@ class Consumption(Base):
     A JSON-encoded list of column name strings. The order of these should match the order of the values for each row
     in the data_points
     """
+
+    data_points: Mapped[List[List[float]]] = mapped_column(
+        postgresql.ARRAY(Float, dimensions=2), nullable=False)
+    """
+    A list of data points. These are the coordinates of the data point. Its value is stored in the `value` column.
+    The order of columns is the entry in the `columns` column.
+    """
+
+    values: Mapped[List[float]] = mapped_column(
+        postgresql.ARRAY(Float, dimensions=1), nullable=False)
+    """
+    A list of consumption values in kWh/km. The corresponding temperatures, inclines etc. are stored in the 
+    `data_points` column.
+    """
+
+    # String Lookups expected in the Dataframes containing Consumption data
+    INCLINE = "incline"
+    T_AMB = "t_amb"
+    LEVEL_OF_LOADING = "level_of_loading"
+    SPEED = "mean_speed_kmh"
+    CONSUMPTION = "consumption_kwh_per_km"
+
+    @staticmethod
+    def calc_consumption(
+        trip_distance: float, temperature: float, mass: float, duration: float
+    ) -> float:
+        """
+        This function calculates the consumption of the trip according to the model of
+        Ji, Bie, Zeng, Wang https://doi.org/10.1016/j.commtr.2022.100069
+        :param trip_distance: Travelled distance in km
+        :param temperature: Average temperature during trip in degrees Celsius
+        :param mass: Curb weight + passengers in kg
+        :param duration: Trip time in minutes
+        :return: Trip energy in kWh
+        """
+
+        # Calculate trip energy for traction and BTMS w1
+        term = (
+            -8.091
+            + 0.533 * np.log(trip_distance)
+            + 0.78 * np.log(mass)
+            + 0.353 * np.log(duration)
+            + 0.008 * np.abs(temperature - 23.7)
+        )
+        w1: float = np.exp(term)
+
+        # Calculate trip energy for AC w2
+        # Possible enhancment: Derive a formula for how t_AC_percent is changing over temperature
+        ks = [0.053, 0.11]  # Factor for cooling / heating
+        AC_threshold = 20  # Above this temperature: cooling, below: heating
+        t_AC_percent = (
+            1  # Percentage of how long of the trip heating/cooling is turned ON
+        )
+        if temperature >= AC_threshold:
+            k = ks[0]
+        else:
+            k = ks[1]
+        w2 = k * t_AC_percent * duration
+
+        # Total trip energy
+        # Possible Enhancement: Check why model energy is this low
+        correction = 1.5  # Energy seems a bit low compared to other data
+        trip_energy = correction * (w1 + w2)
+        trip_consumption = trip_energy / trip_distance
+
+        return trip_consumption
+
+    @staticmethod
+    def table_generator(vehicle_type: VehicleType) -> pd.DataFrame:
+        """
+        Takes VehicleType information to create a consumption table in django-simba format.
+        :return:
+        """
+        if vehicle_type.empty_mass is None:
+            raise ValueError("Vehicle type has no empty mass.")
+        minimum_mass = vehicle_type.empty_mass
+        if vehicle_type.allowed_mass is None:
+            raise ValueError("Vehicle type has no allowed mass.")
+        maximum_mass = vehicle_type.allowed_mass
+
+        mass_range = [minimum_mass, maximum_mass]
+        mass_step = 100  # kg
+        masses = np.arange(mass_range[0], mass_range[1] + mass_step, mass_step)
+        delta_mass = mass_range[1] - mass_range[0]
+        level_of_loading = 1 / delta_mass * masses - 1
+
+        # Temperatures
+        temperature_range = [-20, 40]  # °C
+        temperature_step = 1
+        temperatures = np.arange(
+            temperature_range[0],
+            temperature_range[1] + temperature_step,
+            temperature_step,
+        )
+
+        # Speeds
+        distance = 10  # fixed value for duration calculation
+        speed_range = [5, 60]  # km/h
+        speed_step = 1
+        speeds = np.arange(speed_range[0], speed_range[1] + speed_step, speed_step)
+
+        # Incline
+        incline = 0
+
+        # Calculate consumption
+        combinations = list(product(temperatures, speeds, level_of_loading))
+
+        consumption_list = []
+        for combo in combinations:
+            temp, speed, lol = combo
+            duration = distance / speed * 60
+            mass = (lol + 1) * delta_mass
+            consumption = Consumption.calc_consumption(distance, temp, mass, duration)
+            consumption_list.append(consumption)
+
+        # Create table and return
+        consumption_table = pd.DataFrame(
+            combinations,
+            columns=[
+                Consumption.T_AMB,
+                Consumption.SPEED,
+                Consumption.LEVEL_OF_LOADING,
+            ],
+        )
+        consumption_table[Consumption.INCLINE] = incline
+        consumption_table[Consumption.CONSUMPTION] = consumption_list
+
+        return consumption_table
+
+    @staticmethod
+    def df_to_consumption_obj(
+        df: pd.DataFrame,
+        scenario_or_id: Scenario | int,
+        vehicle_type_or_id: VehicleType | int,
+    ) -> "Consumption":
+        # Expand the scenario to an int and a Scenario object
+        if isinstance(scenario_or_id, Scenario):
+            scenario = scenario_or_id
+            scenario_id = scenario.id
+        elif isinstance(scenario_or_id, int):
+            scenario_id = scenario_or_id
+            scenario = None
+        else:
+            raise ValueError(
+                "scenario_or_id must be either a Scenario object or an int."
+            )
+
+        # Expand the VehicleType to an int and a VehicleType object
+        if isinstance(vehicle_type_or_id, VehicleType):
+            vehicle_type = vehicle_type_or_id
+            vehicle_type_id = vehicle_type.id
+        elif isinstance(vehicle_type_or_id, int):
+            vehicle_type_id = vehicle_type_or_id
+            vehicle_type = None
+        else:
+            raise ValueError(
+                "vehicle_type_or_id must be either a VehicleType object or an int."
+            )
+
+        columns = [
+            Consumption.INCLINE,
+            Consumption.T_AMB,
+            Consumption.LEVEL_OF_LOADING,
+            Consumption.SPEED,
+        ]
+        data_points = np.array(df.loc[:, columns].values).tolist()
+        values = np.array(df.loc[:, Consumption.CONSUMPTION].values).tolist()
+        return Consumption(
+            scenario_id=scenario_id,
+            scenario=scenario,
+            vehicle_type_id=vehicle_type_id,
+            vehicle_type=vehicle_type,
+            columns=columns,
+            data_points=data_points,
+            values=values,
+        )
+
+    @classmethod
+    def for_vehicle_type(cls, vehicle_type: VehicleType) -> "Consumption":
+        df = cls.table_generator(vehicle_type)
+        return cls.df_to_consumption_obj(df, vehicle_type.scenario, vehicle_type)

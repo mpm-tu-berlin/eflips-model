@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from eflips.model import Base
+from eflips.model import Base, ConsistencyWarning
 
 if TYPE_CHECKING:
     from eflips.model import Event, Vehicle, VehicleType, Scenario, Station, Route
@@ -311,12 +311,6 @@ class Rotation(Base):
         return f"<Rotation(id={self.id}, name={self.name})>"
 
 
-class ConsistencyWarning(UserWarning):
-    """
-    A warning that is raised when a consistency check fails.
-    """
-
-    pass
 
 
 @event.listens_for(Rotation, "before_insert")
