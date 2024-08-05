@@ -7,7 +7,7 @@ import gzip
 import os
 import pickle
 from argparse import ArgumentParser
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -57,7 +57,7 @@ if __name__ == "__main__":
         )
 
     with gzip.open(parsed.input_file, "rb") as file:
-        loaded: Dict[str, List[Base] | str] = pickle.load(file)
+        loaded: Dict[str, Union[List[Base], str]] = pickle.load(file)
 
     all_objects = loaded["objects"]
     assert isinstance(all_objects, list)

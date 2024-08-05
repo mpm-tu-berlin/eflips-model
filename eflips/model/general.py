@@ -1128,8 +1128,8 @@ class ConsumptionLut(Base):
     @staticmethod
     def df_to_consumption_obj(
         df: pd.DataFrame,
-        scenario_or_id: Scenario | int,
-        vehicle_class_or_id: VehicleClass | int,
+        scenario_or_id: Union[Scenario, int],
+        vehicle_class_or_id: Union[VehicleClass, int],
     ) -> "ConsumptionLut":
         # Expand the scenario to an int and a Scenario object
         if isinstance(scenario_or_id, Scenario):
