@@ -977,7 +977,7 @@ class ConsumptionLut(Base):
     )
     """The scenario."""
 
-    name = mapped_column(Text)
+    name = mapped_column(Text, nullable=False)  # Because django-simba requires a name
     """A name for the consumption table."""
 
     vehicle_class_id: Mapped[int] = mapped_column(
@@ -1167,6 +1167,7 @@ class ConsumptionLut(Base):
         data_points = np.array(df.loc[:, columns].values).tolist()
         values = np.array(df.loc[:, ConsumptionLut.CONSUMPTION].values).tolist()
         return ConsumptionLut(
+            name=f"Empirical consumption for {vehicle_class.name if vehicle_class else vehicle_class_id}",
             scenario_id=scenario_id,
             scenario=scenario,
             vehicle_class_id=vehicle_class_id,
