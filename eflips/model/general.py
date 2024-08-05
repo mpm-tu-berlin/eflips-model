@@ -1078,25 +1078,23 @@ class ConsumptionLut(Base):
         maximum_mass = vehicle_type.allowed_mass
 
         mass_range = [minimum_mass, maximum_mass]
-        mass_step = 100  # kg
-        masses = np.arange(mass_range[0], mass_range[1] + mass_step, mass_step)
+        mass_steps = 10  # kg
+        masses = np.linspace(mass_range[0], mass_range[1], mass_steps, endpoint=True)
         delta_mass = mass_range[1] - mass_range[0]
         level_of_loading = 1 / delta_mass * masses - 1
 
         # Temperatures
         temperature_range = [-20, 40]  # °C
-        temperature_step = 1
-        temperatures = np.arange(
-            temperature_range[0],
-            temperature_range[1] + temperature_step,
-            temperature_step,
+        temperature_steps = 10
+        temperatures = np.linspace(
+            temperature_range[0], temperature_range[1], temperature_steps, endpoint=True
         )
 
         # Speeds
         distance = 10  # fixed value for duration calculation
         speed_range = [5, 60]  # km/h
-        speed_step = 1
-        speeds = np.arange(speed_range[0], speed_range[1] + speed_step, speed_step)
+        speed_steps = 1
+        speeds = np.linspace(speed_range[0], speed_range[1], speed_steps, endpoint=True)
 
         # Incline
         incline = 0
