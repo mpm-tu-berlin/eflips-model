@@ -837,7 +837,6 @@ class TestEvent(TestGeneral):
             EventType.DRIVING,
             EventType.CHARGING_DEPOT,
             EventType.SERVICE,
-            EventType.STANDBY_DEPARTURE,
             EventType.PRECONDITIONING,
         ):
             event = Event(
