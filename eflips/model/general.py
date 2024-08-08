@@ -22,8 +22,9 @@ from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, Session
 
 from eflips.model import Base
-from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
+from eflips.model.depot import AssocAreaProcess, AssocPlanProcess, Process, Area, Depot, Plan
 from eflips.model.schedule import Rotation, Trip, StopTime
+from eflips.model.network import AssocRouteStation, Station
 
 if TYPE_CHECKING:
     from eflips.model import (
@@ -294,7 +295,7 @@ class Scenario(Base):
                 self._copy_object(assoc_plan_process, session, scenario_copy)
                 assoc_plan_process_id_map[original_id] = assoc_plan_process
 
-        # This assigns the new ids
+         # This assigns the new ids
         session.flush()
 
         # Now that we have copied every object, we need to update their relationships among each other.
@@ -461,6 +462,64 @@ class Scenario(Base):
 
                 session.delete(rotation)
         session.flush()
+
+
+
+    def select_one_depot(self, session: Session, depot_station: Station):
+        """
+
+        """
+
+        # Delete all events
+
+        session.query(Event).filter(Event.scenario_id == self.id).delete()
+
+        # Delete all depot-related data
+        # Delete assocs
+        session.query(AssocPlanProcess).filter(
+            AssocPlanProcess.scenario_id == self.id
+        ).delete()
+        list_of_area = session.query(Area).filter(Area.scenario_id == self.id).all()
+
+        for area in list_of_area:
+            session.query(AssocAreaProcess).filter(
+                AssocAreaProcess.area_id == area.id
+            ).delete()
+            session.query(Event).filter(Event.area_id == area.id).delete()
+
+        # delete processes
+        session.query(Process).filter(Process.scenario_id == self.id).delete()
+
+        # delete areas
+        session.query(Area).filter(Area.scenario_id == self.id).delete()
+        # delete depot
+        session.query(Depot).filter(Depot.scenario_id == self.id).delete()
+        # delete plan
+        session.query(Plan).filter(Plan.scenario_id == self.id).delete()
+
+        # Delete all depots
+        session.query(Depot).filter(Depot.scenario_id == self.id).delete()
+
+
+        rotations = self.rotations
+
+        route_to_delete = []
+        for rotation in rotations:
+            trips = rotation.trips
+            first_stop = trips[0].route.departure_station
+            if first_stop != depot_station:
+                print(first_stop.name)
+                for trip in trips:
+                    for stop_time in trip.stop_times:
+                        session.delete(stop_time)
+                    session.delete(trip)
+                    route_to_delete.append(trip.route)
+                session.delete(rotation)
+                print(f"deleted rotation {rotation.id}")
+
+        session.flush()
+
+
 
     def __repr__(self) -> str:
         return f"<Scenario(id={self.id}, name={self.name})>"
