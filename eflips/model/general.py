@@ -651,14 +651,28 @@ def check_vehicle_type_before_commit(_: Any, __: Any, target: VehicleType) -> No
     :return: Nothing. Raises an exception if something is wrong.
     """
 
-    warnings.warn(
-        "A VehicleType may have consumption xor consumption_lut, but not both.",
-        ConsistencyWarning,
-    )
-    warnings.warn(
-        "A VehicleType must have either consumption or consumption_lut.",
-        ConsistencyWarning,
-    )
+    number_of_consumption_luts = 0
+    for vehicle_class in target.vehicle_classes:
+        if vehicle_class.consumption_lut is not None:
+            number_of_consumption_luts += 1
+
+    if number_of_consumption_luts > 1:
+        warnings.warn(
+            "A VehicleType may at most have one consumption_lut.",
+            ConsistencyWarning,
+        )
+    elif number_of_consumption_luts == 1 and target.consumption is not None:
+        warnings.warn(
+            "A VehicleType may have consumption xor consumption_lut, but not both.",
+            ConsistencyWarning,
+        )
+    elif number_of_consumption_luts == 0 and target.consumption is None:
+        warnings.warn(
+            "A VehicleType must have either consumption or consumption_lut.",
+            ConsistencyWarning,
+        )
+    else:
+        pass  # Everything is fine
 
 
 class BatteryType(Base):
