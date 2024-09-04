@@ -31,7 +31,11 @@ from eflips.model import (
     VehicleType,
     setup_database,
 )
-from eflips.model.general import AssocVehicleTypeVehicleClass, ConsumptionLut
+from eflips.model.general import (
+    AssocVehicleTypeVehicleClass,
+    ConsumptionLut,
+    Temperatures,
+)
 
 
 class TestGeneral:
@@ -58,6 +62,18 @@ class TestGeneral:
         # Add a scenario
         scenario = Scenario(name="Test Scenario")
         session.add(scenario)
+
+        # Add a temperature profile
+        temperatures = Temperatures(
+            scenario=scenario,
+            name="Test Temperatures",
+            use_only_time=False,
+            datetimes=[
+                datetime.min.replace(tzinfo=timezone.utc),
+                datetime.max.replace(tzinfo=timezone.utc),
+            ],
+            data=[20, 20],
+        )
 
         # Add a vehicle type with a battery type
         vehicle_type = VehicleType(
