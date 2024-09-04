@@ -1004,7 +1004,7 @@ class ConsumptionLut(Base):
     )
     """The vehicle class."""
 
-    columns = mapped_column(postgresql.JSONB)
+    columns = mapped_column(postgresql.JSONB, nullable=False)
     """
     A JSON-encoded list of column name strings. The order of these should match the order of the values for each row
     in the data_points
