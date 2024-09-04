@@ -56,6 +56,7 @@ from eflips.model.general import (
     AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
 )
 from eflips.model.general import ConsumptionLut as ConsumptionLut
+from eflips.model.general import Temperatures as Temperatures
 
 from eflips.model.network import ChargeType as ChargeType
 from eflips.model.network import Line as Line

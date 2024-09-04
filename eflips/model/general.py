@@ -144,6 +144,9 @@ class Scenario(Base):
     consumption_luts: Mapped[List["ConsumptionLut"]] = relationship(
         "ConsumptionLut", back_populates="scenario", cascade="all, delete"
     )
+    temperatures: Mapped[List["Temperatures"]] = relationship(
+        "Temperatures", back_populates="scenario", cascade="all, delete"
+    )
     depots: Mapped[List["Depot"]] = relationship(
         "Depot", back_populates="scenario", cascade="all, delete"
     )
@@ -277,6 +280,12 @@ class Scenario(Base):
                 original_id = consumption.id
                 self._copy_object(consumption, session, scenario_copy)
                 consumption_id_map[original_id] = consumption
+
+            temperatures_id_map: Dict[int, "Temperatures"] = {}
+            for temperatures in self.temperatures:
+                original_id = temperatures.id
+                self._copy_object(temperatures, session, scenario_copy)
+                temperatures_id_map[original_id] = temperatures
 
             depot_id_map: Dict[int, "Depot"] = {}
             for depot in self.depots:
@@ -1195,3 +1204,49 @@ class ConsumptionLut(Base):
     ) -> "ConsumptionLut":
         df = cls.table_generator(vehicle_type)
         return cls.df_to_consumption_obj(df, vehicle_type.scenario, vehicle_class)
+
+
+class Temperatures(Base):
+    """
+    The Consumption table stores the energy consumption look-up-tables for each vehicle class.
+
+    Uses a regression model generated from real world electric bus data to create a consumption table in
+    django-simba format (temperature, speed, level of loading, incline, consumption) and exports it into
+    the session database.
+    """
+
+    __tablename__ = "Temperatures"
+    __table_args__ = (
+        UniqueConstraint("scenario_id", "id"),  # Only one temperature per scenario
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    """The unique identifier of the consumption. Auto-incremented."""
+
+    scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
+    """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
+    scenario: Mapped[Scenario] = relationship("Scenario", back_populates="temperatures")
+    """The scenario."""
+
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    """A name for the temperature table."""
+
+    use_only_time: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    """
+    Whether the temperature data is for one repeating day. If False, the temperature data is for multiple days.
+    If true, it is for one day and all other days should use the values from this day.
+    """
+
+    datetimes: Mapped[List[datetime]] = mapped_column(
+        postgresql.ARRAY(DateTime(timezone=True))
+    )
+    """
+    The datetimes of the temperature data. If is_one_repeating_day is True, this should be a single day.
+    The length of this list should be the same as the length of the temperatures.
+    """
+
+    data: Mapped[List[float]] = mapped_column(postgresql.ARRAY(Float))
+    """
+    The temperatures in degrees Celsius. The order of the temperatures should match the order of the datetimes.
+    The length of this list should be the same as the length of the datetimes.
+    """
