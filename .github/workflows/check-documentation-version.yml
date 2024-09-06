@@ -2,7 +2,7 @@ name: Check Documentation version is equal to package version
 on: pull_request
 
 jobs:
-  build-documentation:
+  check-documentation-version:
 
     runs-on: ubuntu-latest
 
