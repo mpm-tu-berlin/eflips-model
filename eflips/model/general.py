@@ -1081,7 +1081,7 @@ class ConsumptionLut(Base):
 
         # Total trip energy
         # Possible Enhancement: Check why model energy is this low
-        correction = 1.5  # Energy seems a bit low compared to other data
+        correction = 1.0  # Energy seems a bit low compared to other data
         trip_energy = correction * (w1 + w2)
         trip_consumption = trip_energy / trip_distance
 
@@ -1100,15 +1100,15 @@ class ConsumptionLut(Base):
             raise ValueError("Vehicle type has no allowed mass.")
         maximum_mass = vehicle_type.allowed_mass
 
-        mass_range = [minimum_mass, maximum_mass]
-        mass_steps = 10  # kg
+        mass_range = [minimum_mass, maximum_mass]  # kg
+        mass_steps = 11
         masses = np.linspace(mass_range[0], mass_range[1], mass_steps, endpoint=True)
         delta_mass = mass_range[1] - mass_range[0]
-        level_of_loading = 1 / delta_mass * masses - 1
+        level_of_loading = (masses - mass_range[0]) / delta_mass
 
         # Temperatures
         temperature_range = [-20, 40]  # °C
-        temperature_steps = 10
+        temperature_steps = 11
         temperatures = np.linspace(
             temperature_range[0], temperature_range[1], temperature_steps, endpoint=True
         )
@@ -1116,7 +1116,7 @@ class ConsumptionLut(Base):
         # Speeds
         distance = 10  # fixed value for duration calculation
         speed_range = [5, 60]  # km/h
-        speed_steps = 1
+        speed_steps = 11
         speeds = np.linspace(speed_range[0], speed_range[1], speed_steps, endpoint=True)
 
         # Incline
