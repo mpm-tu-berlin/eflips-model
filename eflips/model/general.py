@@ -76,8 +76,9 @@ class Scenario(Base):
     The time the simulation was finished. Automatically set to the current time at simulation end. Null if not yet 
     finished.
     """
+    default_simba_options: str = '{"eta": false, "days": null, "mode": ["sim", "report"], "seed": 1, "config": null, "margin": 1, "logfile": "", "interval": 1, "loglevel": "INFO", "strategy": "distributed", "show_plots": false, "skip_plots": true, "cs_power_opps": 300, "gc_power_deps": 100000, "gc_power_opps": 100000, "input_schedule": null, "PRICE_THRESHOLD": -100, "rotation_filter": null, "signal_time_dif": 10, "cost_calculation": false, "desired_soc_deps": 1.0, "desired_soc_opps": 1.0, "optimizer_config": null, "output_directory": "data/sim_outputs", "include_price_csv": null, "min_charging_time": 0, "station_data_path": null, "ALLOW_NEGATIVE_SOC": true, "cs_power_deps_depb": 150, "cs_power_deps_oppb": 150, "vehicle_types_path": "data/examples/vehicle_types.json", "cost_parameters_file": null, "electrified_stations": null, "default_voltage_level": "MV", "propagate_mode_errors": false, "min_recharge_deps_depb": 1, "min_recharge_deps_oppb": 1, "preferred_charging_type": "depb", "default_buffer_time_opps": 0, "include_price_csv_option": [], "rotation_filter_variable": null, "check_rotation_consistency": false, "skip_inconsistent_rotations": false, "level_of_loading_over_day_path": null, "outside_temperature_over_day_path": null}'
     simba_options: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        postgresql.JSONB, nullable=False, server_default=default_simba_options
     )
     """The options for the simBA simulation. Stored as a JSON object."""
     eflips_depot_options: Mapped[Dict[str, Any]] = mapped_column(
