@@ -386,7 +386,8 @@ class TestScenario(TestGeneral):
         assert scenario.name == "Test Scenario"
         assert scenario.created is not None
         assert scenario.finished is None
-        assert scenario.simba_options is None
+        assert scenario.simba_options is not None
+        assert isinstance(scenario.simba_options, dict)
 
     def test_copy_scenario(self, session, sample_content):
         # Find the associations between plans and processes
@@ -531,7 +532,8 @@ class TestScenario(TestGeneral):
         assert scenario.name == "Child Scenario"
         assert scenario.created is not None
         assert scenario.finished is None
-        assert scenario.simba_options is None
+        assert scenario.simba_options is not None
+        assert isinstance(scenario.simba_options, dict)
         assert scenario.parent == parent
         assert scenario.parent_id == 1
         assert parent.children == [scenario]
