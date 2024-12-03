@@ -27,7 +27,7 @@ def upgrade() -> None:
     op.alter_column(
         "Scenario",
         "simba_options",
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
         nullable=False,
     )
     # ### end Alembic commands ###
@@ -38,7 +38,7 @@ def downgrade() -> None:
     op.alter_column(
         "Scenario",
         "simba_options",
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
         nullable=True,
     )
     # ### end Alembic commands ###
