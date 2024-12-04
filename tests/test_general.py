@@ -22,6 +22,7 @@ from eflips.model import (
     Rotation,
     Route,
     Scenario,
+    setup_database,
     Station,
     StopTime,
     Trip,
@@ -29,7 +30,6 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
-    setup_database,
 )
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass,
@@ -926,6 +926,7 @@ class TestEvent(TestGeneral):
         event = Event(
             scenario=session.query(Scenario).first(),
             area=charging_process.areas[0],
+            station_id=charging_process.areas[0].depot.station_id,
             vehicle_type=session.query(VehicleType).first(),
             event_type=EventType.CHARGING_DEPOT,
             subloc_no=1,
