@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
 from itertools import product
 from typing import Any, Dict, List, TYPE_CHECKING, Union
+
 import numpy as np
 import pandas as pd
 from sqlalchemy import (
@@ -13,14 +14,14 @@ from sqlalchemy import (
     Column,
     DateTime,
     Enum as SqlEnum,
+    event,
     Float,
     ForeignKey,
     func,
     Integer,
     Text,
-    UUID,
     UniqueConstraint,
-    event,
+    UUID,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
@@ -28,7 +29,7 @@ from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, 
 
 from eflips.model import Base, ConsistencyWarning
 from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
-from eflips.model.schedule import Rotation, Trip, StopTime
+from eflips.model.schedule import Rotation, StopTime, Trip
 
 if TYPE_CHECKING:
     from eflips.model import (
@@ -964,7 +965,7 @@ class Event(Base):
         # Also make sure the event type is valid for the nullable fields
         CheckConstraint(
             "(station_id IS NOT NULL AND event_type IN ('CHARGING_OPPORTUNITY', 'STANDBY_DEPARTURE'))  OR "
-            "(area_id IS NOT NULL AND subloc_no IS NOT NULL AND event_type IN ('CHARGING_DEPOT', 'SERVICE', "
+            "(area_id IS NOT NULL AND subloc_no IS NOT NULL AND station_id IS NOT NULL AND event_type IN ('CHARGING_DEPOT', 'SERVICE', "
             "'STANDBY_DEPARTURE', 'STANDBY', 'PRECONDITIONING')) OR"
             "(trip_id IS NOT NULL AND subloc_no IS NULL AND event_type IN ('DRIVING'))",
             name="filled_fields_type_combination",
