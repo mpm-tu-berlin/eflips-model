@@ -158,7 +158,7 @@ def get_or_update_max_sequence_number(
                 )
                 res = cur.fetchone()
                 new_max_id = res[0] if res is not None else None
-                if new_max_id <= max_id:
+                if new_max_id is None or new_max_id <= max_id:
                     raise ValueError(
                         f"Sequence {table_name + SEQUENCE_NUMBER_SUFFIX} did not restart properly. "
                         f"It is still at {new_max_id}"
