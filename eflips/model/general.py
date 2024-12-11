@@ -1133,7 +1133,7 @@ class ConsumptionLut(Base):
             duration = distance / speed * 60
             mass = (lol + 1) * delta_mass
             consumption = ConsumptionLut.calc_consumption(
-                distance, temp, mass, duration
+                distance, temp, mass, duration  # type: ignore
             )
             consumption_list.append(consumption)
 
