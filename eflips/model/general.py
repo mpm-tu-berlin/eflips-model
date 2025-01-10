@@ -401,6 +401,26 @@ class Scenario(Base):
             if event.vehicle_type_id is not None:
                 event.vehicle_type_id = vehicle_type_id_map[event.vehicle_type_id].id
 
+        # Event <-> Vehicle
+        for event in scenario_copy.events:
+            if event.vehicle_id is not None:
+                event.vehicle_id = vehicle_id_map[event.vehicle_id].id
+
+        # Event <-> Trip
+        for event in scenario_copy.events:
+            if event.trip_id is not None:
+                event.trip_id = trip_id_map[event.trip_id].id
+
+        # Event <-> Station
+        for event in scenario_copy.events:
+            if event.station_id is not None:
+                event.station_id = station_id_map[event.station_id].id
+
+        # Event <-> Area
+        for event in scenario_copy.events:
+            if event.area_id is not None:
+                event.area_id = area_id_map[event.area_id].id
+
         # Consumption <-> VehicleType
         for consumption in scenario_copy.consumption_luts:
             consumption.vehicle_class_id = vehicle_class_id_map[
