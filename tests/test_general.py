@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 
+import numpy as np
 import pytest
 import sqlalchemy
 from sqlalchemy import create_engine
@@ -30,6 +31,7 @@ from eflips.model import (
     Vehicle,
     VehicleClass,
     VehicleType,
+    ConsistencyWarning,
 )
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass,
@@ -1138,3 +1140,129 @@ class TestEvent(TestGeneral):
         session.add(event_1)
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             session.commit()
+
+    def test_create_driving_event_fractional_start(self, session, sample_content):
+        with pytest.warns(ConsistencyWarning):
+            event = Event(
+                scenario=session.query(Scenario).first(),
+                trip=session.query(Trip).first(),
+                vehicle_type=session.query(VehicleType).first(),
+                event_type=EventType.DRIVING,
+                time_start=session.query(Trip).first().departure_time
+                + timedelta(seconds=0.5),
+                time_end=session.query(Trip).first().arrival_time,
+                soc_start=0.5,
+                soc_end=0.5,
+            )
+            session.add(event)
+            session.commit()
+
+    def test_create_driving_event_fractional_end(self, session, sample_content):
+        with pytest.warns(ConsistencyWarning):
+            event = Event(
+                scenario=session.query(Scenario).first(),
+                trip=session.query(Trip).first(),
+                vehicle_type=session.query(VehicleType).first(),
+                event_type=EventType.DRIVING,
+                time_start=session.query(Trip).first().departure_time,
+                time_end=session.query(Trip).first().arrival_time
+                + timedelta(seconds=0.5),
+                soc_start=0.5,
+                soc_end=0.5,
+            )
+            session.add(event)
+            session.commit()
+
+    def test_create_driving_event_with_timeseries_invalid(
+        self, session, sample_content
+    ):
+        event = Event(
+            scenario=session.query(Scenario).first(),
+            trip=session.query(Trip).first(),
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.DRIVING,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        times = np.arange(event.time_start, event.time_end, timedelta(seconds=1))
+        socs = np.linspace(event.soc_start, event.soc_end, len(times))
+
+        event.timeseries = [(t, s) for t, s in zip(times, socs)]
+        with pytest.raises(ValueError):
+            session.add(event)
+            session.commit()
+
+    def test_create_driving_event_with_timeseries_too_early(
+        self, session, sample_content
+    ):
+        event = Event(
+            scenario=session.query(Scenario).first(),
+            trip=session.query(Trip).first(),
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.DRIVING,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        times = [
+            (event.time_start - timedelta(seconds=1)).isoformat(),
+            event.time_end.isoformat(),
+        ]
+        socs = [0.5, 0.5]
+
+        event.timeseries = {"time": times, "soc": socs}
+
+        with pytest.raises(ValueError):
+            session.add(event)
+            session.commit()
+
+    def test_create_driving_event_with_timeseries_too_late(
+        self, session, sample_content
+    ):
+        event = Event(
+            scenario=session.query(Scenario).first(),
+            trip=session.query(Trip).first(),
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.DRIVING,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        times = [
+            event.time_start.isoformat(),
+            (event.time_end + timedelta(seconds=1)).isoformat(),
+        ]
+        socs = [0.5, 0.5]
+
+        event.timeseries = {"time": times, "soc": socs}
+
+        with pytest.raises(ValueError):
+            session.add(event)
+            session.commit()
+
+    def test_create_driving_event_with_timeseries(self, session, sample_content):
+        event = Event(
+            scenario=session.query(Scenario).first(),
+            trip=session.query(Trip).first(),
+            vehicle_type=session.query(VehicleType).first(),
+            event_type=EventType.DRIVING,
+            time_start=session.query(Trip).first().departure_time,
+            time_end=session.query(Trip).first().arrival_time,
+            soc_start=0.5,
+            soc_end=0.5,
+        )
+
+        times = [event.time_start.isoformat(), event.time_end.isoformat()]
+        socs = [0.5, 0.5]
+
+        event.timeseries = {"time": times, "soc": socs}
+
+        session.add(event)
+        session.commit()
