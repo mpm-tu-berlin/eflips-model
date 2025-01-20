@@ -997,6 +997,60 @@ class Event(Base):
         return f"<Event(id={self.id}, event_type={self.event_type}, time_start={self.time_start}, time_end={self.time_end})>"
 
 
+@event.listens_for(Event, "before_insert")
+@event.listens_for(Event, "before_update")
+def check_event_before_commit(_: Any, __: Any, target: Event) -> None:
+    """
+    1. If the event has a timeseries, check if the keys are correct. Also make sure the first timestamp is >= time_start
+    and the last timestamp is <= time_end.
+
+    2. Check if the start or end time is not a full second, warn the user if it is not.
+
+    :param target: an event object
+    :return: Nothing. Raises an exception if something is wrong.
+    """
+    # Check if the timeseries keys are correct
+    if target.timeseries is not None:
+        if "time" not in target.timeseries:
+            raise ValueError("The timeseries must have a 'time' key.")
+        else:
+            # Each entry must either be a string
+            for time in target.timeseries["time"]:
+                if not isinstance(time, str):
+                    raise ValueError(
+                        "The 'time' key must contain strings or datetime objects."
+                    )
+            # The first timestamp must be >= time_start and the last timestamp must be <= time_end
+            first_timestamp = datetime.fromisoformat(target.timeseries["time"][0])  # type: ignore
+            if first_timestamp < target.time_start:
+                raise ValueError(
+                    "The first timestamp in the timeseries must be >= time_start."
+                )
+
+            last_timestamp = datetime.fromisoformat(target.timeseries["time"][-1])  # type: ignore
+            if last_timestamp > target.time_end:
+                raise ValueError(
+                    "The last timestamp in the timeseries must be <= time_end."
+                )
+
+        if "soc" not in target.timeseries:
+            raise ValueError("The timeseries must have a 'soc' key.")
+
+    # Check if the arrival or departure time is not a full second
+    if target.time_start.microsecond != 0:
+        warnings.warn(
+            "The departure time of a trip should be a full second. "
+            f"Trip {target.id} violates this.",
+            ConsistencyWarning,
+        )
+    if target.time_end.microsecond != 0:
+        warnings.warn(
+            "The arrival time of a trip should be a full second. "
+            f"Trip {target.id} violates this.",
+            ConsistencyWarning,
+        )
+
+
 class ConsumptionLut(Base):
     """
     The Consumption table stores the energy consumption look-up-tables for each vehicle class.

@@ -97,6 +97,18 @@ class TestTripAndStopTime(TestGeneral):
         session.add(trip)
         session.commit()
 
+    def test_trip_departure_microseconds(self, session, trip):
+        with pytest.warns(ConsistencyWarning):
+            trip.departure_time = trip.departure_time.replace(microsecond=1)
+            session.add(trip)
+            session.commit()
+
+    def test_trip_arrival_microseconds(self, session, trip):
+        with pytest.warns(ConsistencyWarning):
+            trip.arrival_time = trip.arrival_time.replace(microsecond=999)
+            session.add(trip)
+            session.commit()
+
     def test_trip_invalid_time(self, session, trip):
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             trip.departure_time = trip.arrival_time + timedelta(minutes=1)

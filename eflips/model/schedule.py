@@ -125,12 +125,22 @@ class Trip(Base):
     departure_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
-    """The departure time at the first station."""
+    """
+    The departure time at the first station.
+    
+    This must be specified as full seconds, e.g. the "microseconds" part of the datetime must be 0. This is done 
+    because lots of later parts of the code assume that the departure time is a full second.
+    """
 
     arrival_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
-    """The arrival time at the last station."""
+    """
+    The arrival time at the last station.
+    
+    This must be specified as full seconds, e.g. the "microseconds" part of the datetime must be 0. This is done 
+    because lots of later parts of the code assume that the departure time is a full second
+    """
 
     trip_type = mapped_column(SqlEnum(TripType, native_enum=False), nullable=False)
     """The type of the trip. Either `EMPTY` or `PASSENGER`."""
@@ -165,7 +175,9 @@ class Trip(Base):
 @event.listens_for(Trip, "before_update")
 def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
     """
-    Before a trip is flushed to the database, if it has stop times:
+    1) Check if the arrival or departure time is not a full second, warn the user if it is not.
+
+    2) Before a trip is flushed to the database, if it has stop times:
     - Ensure that the arrival time of the first stop time is the departure time of the trip
     - Ensure that the arrival time of the last stop time is the arrival time of the trip
     - Ensure that the first stop time is the first stop of the route
@@ -174,6 +186,20 @@ def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
     :param target: a trip
     :return: Nothing. Raises an exception if something is wrong.
     """
+    # Check if the arrival or departure time is not a full second
+    if target.departure_time.microsecond != 0:
+        warnings.warn(
+            "The departure time of a trip should be a full second. "
+            f"Trip {target.id} violates this.",
+            ConsistencyWarning,
+        )
+    if target.arrival_time.microsecond != 0:
+        warnings.warn(
+            "The arrival time of a trip should be a full second. "
+            f"Trip {target.id} violates this.",
+            ConsistencyWarning,
+        )
+
     # If the trip has stop times, check them
     if len(target.stop_times) > 0:
         sorted_stop_times = sorted(target.stop_times, key=lambda x: x.arrival_time)
