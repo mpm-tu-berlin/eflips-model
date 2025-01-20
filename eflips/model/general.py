@@ -984,7 +984,7 @@ class Event(Base):
         CheckConstraint("soc_end <= 1"),
         # Also make sure the event type is valid for the nullable fields
         CheckConstraint(
-            "(station_id IS NOT NULL AND event_type IN ('CHARGING_OPPORTUNITY', 'STANDBY_DEPARTURE'))  OR "
+            "(station_id IS NOT NULL AND event_type IN ('CHARGING_OPPORTUNITY', 'STANDBY_DEPARTURE', 'STANDBY'))  OR "
             "(area_id IS NOT NULL AND subloc_no IS NOT NULL AND station_id IS NOT NULL AND event_type IN ('CHARGING_DEPOT', 'SERVICE', "
             "'STANDBY_DEPARTURE', 'STANDBY', 'PRECONDITIONING')) OR"
             "(trip_id IS NOT NULL AND subloc_no IS NULL AND event_type IN ('DRIVING'))",
