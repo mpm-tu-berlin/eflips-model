@@ -943,7 +943,7 @@ class Event(Base):
     trip: Mapped["Trip"] = relationship("Trip", back_populates="events")
 
     time_start: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True), nullable=False, index=False
     )
     """The time the event starts."""
 
