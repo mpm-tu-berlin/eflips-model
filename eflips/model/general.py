@@ -920,7 +920,9 @@ class Event(Base):
     vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="events")
     """The vehicle."""
 
-    station_id: Mapped[int] = mapped_column(ForeignKey("Station.id"), nullable=True)
+    station_id: Mapped[int] = mapped_column(
+        ForeignKey("Station.id"), nullable=True, index=True
+    )
     """The unique identifier of the station. Foreign key to :attr:`Station.id`."""
     station: Mapped["Station"] = relationship("Station", back_populates="events")
 
@@ -941,7 +943,7 @@ class Event(Base):
     trip: Mapped["Trip"] = relationship("Trip", back_populates="events")
 
     time_start: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+        DateTime(timezone=True), nullable=False, index=True
     )
     """The time the event starts."""
 
