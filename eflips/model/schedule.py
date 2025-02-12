@@ -316,7 +316,9 @@ class Rotation(Base):
     )
     """The vehicle type."""
 
-    vehicle_id: Mapped[int] = mapped_column(ForeignKey("Vehicle.id"), nullable=True)
+    vehicle_id: Mapped[int] = mapped_column(
+        ForeignKey("Vehicle.id"), nullable=True, index=True
+    )
     """The unique identifier of the vehicle. Foreign key to :attr:`Vehicle.id`."""
     vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="rotations")
 
