@@ -22,6 +22,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     UUID,
+    Index,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
@@ -993,6 +994,9 @@ class Event(Base):
             name="filled_fields_type_combination",
         ),
         CheckConstraint("time_start < time_end", name="duration_positive"),
+        Index(
+            "idx_station_event_time_range", station_id, event_type, time_start, time_end
+        ),
     )
 
     def __repr__(self) -> str:
