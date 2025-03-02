@@ -87,8 +87,9 @@ class Scenario(Base):
         postgresql.JSONB, nullable=True
     )
     """The options for the eflips-depot simulation. Stored as a JSON object."""
+#Change: nullable=False, default-configuration
     task_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=True, unique=True
+        UUID(as_uuid=True), nullable=False, unique=True, default=uuid.uuid4
     )
     """The task id of the simulation. Automatically set to a UUID when a scenario is submitted for simulation."""
 
