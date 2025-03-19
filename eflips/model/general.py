@@ -458,7 +458,7 @@ class Scenario(Base):
                 session.add(area_process_entry)
             elif (
                 area_process_entry.area_id not in area_id_map
-                and area_process_entry.process_id in process_id_map
+                and area_process_entry.process_id not in process_id_map
             ):
                 pass
             else:
