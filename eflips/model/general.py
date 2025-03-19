@@ -350,7 +350,7 @@ class Scenario(Base):
                 session.add(new_entry)
             elif (
                 entry.vehicle_type_id not in vehicle_type_id_map
-                and entry.vehicle_class_id in vehicle_class_id_map
+                and entry.vehicle_class_id not in vehicle_class_id_map
             ):
                 pass
             else:
