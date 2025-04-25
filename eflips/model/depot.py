@@ -167,12 +167,16 @@ class Area(Base):
     """An optional short name for the area."""
 
     capacity: Mapped[int] = mapped_column(Integer)
+    """The capacity of the area. Must be set."""
+
+    row_count: Mapped[int] = mapped_column(Integer, nullable=True)
+    """Number of side-by-side rows in a LINE area. Must be set for areas of type LINE."""
 
     capacity_constraint = CheckConstraint(
         "capacity > 0 AND "
-        "((area_type = 'DIRECT_TWOSIDE' AND capacity % 2 = 0) "
-        "OR (area_type = 'DIRECT_ONESIDE') "
-        "OR (area_type = 'LINE'))",
+        "((area_type = 'DIRECT_TWOSIDE' AND row_count IS NULL AND capacity % 2 = 0) "
+        "OR (area_type = 'DIRECT_ONESIDE' AND row_count IS NULL) "
+        "OR (area_type = 'LINE' AND row_count IS NOT NULL AND capacity % row_count = 0))",
         name="capacity_validity_check",
     )
 
