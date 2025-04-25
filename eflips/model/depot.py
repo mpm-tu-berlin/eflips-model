@@ -8,7 +8,8 @@ import svgwrite.container  # type: ignore[import-untyped]
 import svgwrite.shapes  # type: ignore[import-untyped]
 from geoalchemy2 import Geometry
 from pyproj import Transformer, CRS
-from shapely.geometry import Polygon as ShapelyPolygon, Point, box, affinity  # type: ignore[import-untyped]
+from shapely.geometry import Polygon as ShapelyPolygon, Point, box  # type: ignore[import-untyped]
+from shapely import affinity  # type: ignore[import-untyped]
 from sqlalchemy import (
     BigInteger,
     Boolean,
