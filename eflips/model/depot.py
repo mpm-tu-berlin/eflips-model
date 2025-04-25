@@ -1,7 +1,14 @@
 from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
-from typing import List, Tuple, TYPE_CHECKING, Optional, Union, Dict, Any
+from math import sin, cos, sqrt, radians, degrees
+from typing import List, Tuple, TYPE_CHECKING, Optional, Dict, Any
 
+import geoalchemy2.shape as ga_shape
+import svgwrite.container  # type: ignore[import-untyped]
+import svgwrite.shapes  # type: ignore[import-untyped]
+from geoalchemy2 import Geometry
+from pyproj import Transformer, CRS
+from shapely.geometry import Polygon as ShapelyPolygon, Point, box, affinity  # type: ignore[import-untyped]
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -17,21 +24,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from geoalchemy2 import Geometry
-from math import sin, cos, radians, sqrt, radians, degrees
-from pyproj import Proj, Transformer, CRS
-from shapely.geometry import box
-from shapely.geometry import Polygon as ShapelyPolygon, Point
-from shapely import affinity
-from geoalchemy2.functions import ST_IsValid, ST_Area
-from sqlalchemy import func
-
-import svgwrite
-from svgwrite.container import Group
-from svgwrite.shapes import Polygon, Rect
-from svgwrite.path import Path
-
-import geoalchemy2.shape as ga_shape
 
 from eflips.model import Base
 
@@ -231,6 +223,249 @@ class Depot(Base):
         # Check if polygon is valid and has positive area
         return poly is not None and poly.is_valid and poly.area > 0
 
+    def generate_svg(
+        self,
+        width: int = 800,
+        height: int = 800,
+        margin: int = 20,
+        draw_labels: bool = True,
+        draw_area_info: bool = True,
+        draw_parking_spaces: bool = True,
+    ) -> str:
+        """
+        Generates an SVG visualization of the depot, including areas and parking spaces.
+
+        Args:
+            width: The width of the SVG in pixels
+            height: The height of the SVG in pixels
+            margin: Margin around the depot in pixels
+            draw_labels: Whether to draw labels for areas and parking spaces
+            draw_area_info: Whether to draw information about each area
+            draw_parking_spaces: Whether to draw individual parking spaces
+
+        Returns:
+            The SVG as a string
+        """
+        # Check if the depot has a bounding box
+        if self.bounding_box is None:
+            return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="16">No bounding box defined for depot</text></svg>'
+
+        # Get the depot's bounding box in local coordinates
+        depot_bbox = self.bounding_box_local
+        if depot_bbox is None:
+            return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="16">Error getting local bounding box</text></svg>'
+
+        # Get bounds of the depot's bounding box
+        min_x, min_y, max_x, max_y = depot_bbox.bounds
+
+        # Calculate scaling factors to fit the depot in the SVG with margins
+        bbox_width = max_x - min_x
+        bbox_height = max_y - min_y
+
+        # Calculate scaling factor preserving aspect ratio
+        scale_x = (width - 2 * margin) / bbox_width
+        scale_y = (height - 2 * margin) / bbox_height
+        scale = min(scale_x, scale_y)
+
+        # SVG uses top-left as origin, so we need to flip Y coordinates
+        # Transform function: local coords to SVG coords
+        def transform_point(x: float, y: float) -> Tuple[float, float]:
+            # Apply scaling and translation to fit in SVG, and flip Y coordinate
+            svg_x = margin + (x - min_x) * scale
+            # Flip Y-axis (SVG has Y increasing downward)
+            svg_y = height - margin - (y - min_y) * scale
+            return svg_x, svg_y
+
+        # Transform a polygon to SVG coordinates
+        def transform_polygon(polygon: ShapelyPolygon) -> List[Tuple[float, float]]:
+            exterior_coords = list(polygon.exterior.coords)
+            transformed_coords = [transform_point(x, y) for x, y in exterior_coords]
+            return transformed_coords
+
+        # Create SVG drawing
+        dwg = svgwrite.Drawing(profile="tiny", size=(width, height))
+
+        # Create a group for the depot
+        depot_group = svgwrite.container.Group(id="depot")
+
+        # Draw depot bounding box
+        depot_outline = transform_polygon(depot_bbox)
+        depot_polygon = svgwrite.shapes.Polygon(
+            depot_outline, fill="none", stroke="black", stroke_width=2
+        )
+        depot_group.add(depot_polygon)
+
+        # Add depot name
+        if draw_labels:
+            center_x = margin + bbox_width * scale / 2
+            depot_group.add(
+                dwg.text(
+                    self.name,
+                    insert=(center_x, margin / 2),
+                    text_anchor="middle",
+                    font_size=16,
+                    font_weight="bold",
+                )
+            )
+
+        # Group for all areas
+        areas_group = svgwrite.container.Group(id="areas")
+
+        # Dictionary to map vehicle types to colors
+        # We'll create a deterministic color mapping based on vehicle type ID
+        vehicle_type_colors: Dict[int, str] = {}
+        # List of distinct colors for different vehicle types
+        distinct_colors = [
+            "#4285F4",  # Google Blue
+            "#EA4335",  # Google Red
+            "#FBBC05",  # Google Yellow
+            "#34A853",  # Google Green
+            "#9C27B0",  # Purple
+            "#00BCD4",  # Cyan
+            "#FF9800",  # Orange
+            "#795548",  # Brown
+            "#607D8B",  # Blue Grey
+            "#E91E63",  # Pink
+        ]
+
+        # Draw each area
+        for i, area in enumerate(self.areas):
+            # Get area bounding box
+            area_bbox = area.bounding_box_local
+            if area_bbox is None:
+                continue
+
+            # Create group for this area
+            area_group = svgwrite.container.Group(id=f"area_{area.id}")
+
+            # Determine fill color based on vehicle type
+            fill_color = "#CCCCCC"  # Default gray if no vehicle type
+            if area.vehicle_type:
+                # If we haven't seen this vehicle type before, assign a color
+                if area.vehicle_type.id not in vehicle_type_colors:
+                    color_index = len(vehicle_type_colors) % len(distinct_colors)
+                    vehicle_type_colors[area.vehicle_type.id] = distinct_colors[
+                        color_index
+                    ]
+                fill_color = vehicle_type_colors[area.vehicle_type.id]
+
+            # Draw area bounding box
+            area_outline = transform_polygon(area_bbox)
+            area_polygon = svgwrite.shapes.Polygon(
+                area_outline,
+                fill=fill_color,
+                stroke="black",
+                stroke_width=1,
+                fill_opacity=0.5,
+            )
+            area_group.add(area_polygon)
+
+            # Add area name if available
+            if draw_labels and area.name:
+                # Get center of the area
+                centroid = area_bbox.centroid
+                center_x, center_y = transform_point(centroid.x, centroid.y)
+
+                # Add area name
+                area_group.add(
+                    dwg.text(
+                        area.name,
+                        insert=(center_x, center_y),
+                        text_anchor="middle",
+                        font_size=12,
+                        font_weight="bold",
+                    )
+                )
+
+            # Add area information
+            if draw_area_info:
+                min_x_area, min_y_area, max_x_area, max_y_area = area_bbox.bounds
+                info_x, info_y = transform_point(min_x_area, max_y_area)
+
+                # Create background rectangle for info text
+                info_bg = dwg.rect(
+                    insert=(
+                        info_x,
+                        info_y - 75,
+                    ),  # Increased height for vehicle type info
+                    size=(150, 75),  # Increased height
+                    fill="white",
+                    stroke="black",
+                    stroke_width=0.5,
+                    opacity=0.8,
+                    rx=3,
+                    ry=3,
+                )
+                area_group.add(info_bg)
+
+                # Add area type, capacity, row count, and vehicle type if applicable
+                info_text = []
+                info_text.append(f"Type: {area.area_type.name}")
+                info_text.append(f"Capacity: {area.capacity}")
+
+                if area.area_type == AreaType.LINE and area.row_count:
+                    info_text.append(f"Rows: {area.row_count}")
+
+                # Add vehicle type information
+                if area.vehicle_type:
+                    info_text.append(f"Vehicle: {area.vehicle_type.name}")
+                    if area.vehicle_type.length and area.vehicle_type.width:
+                        info_text.append(
+                            f"Size: {area.vehicle_type.length:.1f}m × {area.vehicle_type.width:.1f}m"
+                        )
+
+                for idx, text in enumerate(info_text):
+                    area_group.add(
+                        dwg.text(
+                            text,
+                            insert=(info_x + 5, info_y - 60 + idx * 15),
+                            font_size=10,
+                        )
+                    )
+
+            # Draw parking spaces if requested
+            if draw_parking_spaces:
+                parking_spaces = area.generate_parking_spaces()
+                if parking_spaces:
+                    # Create a group for parking spaces
+                    spaces_group = svgwrite.container.Group(id=f"spaces_area_{area.id}")
+
+                    # Draw each parking space
+                    for j, space in enumerate(parking_spaces):
+                        space_outline = transform_polygon(space)
+                        space_polygon = svgwrite.shapes.Polygon(
+                            space_outline, fill="none", stroke="blue", stroke_width=0.5
+                        )
+                        spaces_group.add(space_polygon)
+
+                        # Add space number if requested and not too many spaces
+                        if draw_labels and area.capacity <= 50:
+                            centroid = space.centroid
+                            space_x, space_y = transform_point(centroid.x, centroid.y)
+                            spaces_group.add(
+                                dwg.text(
+                                    str(j + 1),
+                                    insert=(space_x, space_y),
+                                    text_anchor="middle",
+                                    font_size=6,
+                                )
+                            )
+
+                    area_group.add(spaces_group)
+
+            # Add this area group to the areas group
+            areas_group.add(area_group)
+
+        # Add all groups to the drawing
+        depot_group.add(areas_group)
+        dwg.add(depot_group)
+
+        dwg_string = dwg.tostring()
+
+        assert isinstance(dwg_string, str), "SVG string is not a valid string"
+
+        return dwg_string
+
 
 class Plan(Base):
     """
@@ -398,7 +633,7 @@ class Area(Base):
             raise ValueError("Changing the angle might mess up the")
 
         if self.area_type == AreaType.LINE:
-            vehicles_per_row = self.capacity / self.row_count
+            vehicles_per_row = self.capacity // self.row_count
             assert vehicles_per_row.is_integer()
 
             # The length is the length of the vehicle plus the spacing between the vehicles
@@ -859,141 +1094,6 @@ class Area(Base):
                 return False
 
         return True
-
-    def visualize_parking_spaces(
-        self, show_vehicles=True, figsize=(10, 10), dpi=100, title=None
-    ):
-        """
-        Visualizes the area's bounding box and parking spaces using matplotlib.
-
-        Args:
-            show_vehicles: If True, draws vehicle rectangles inside the parking spaces
-            figsize: Tuple of (width, height) for the figure size
-            dpi: Resolution for the figure
-            title: Optional title for the plot. If None, uses the area name
-
-        Returns:
-            The matplotlib figure object
-        """
-        # Local import to avoid making matplotlib a hard dependency
-        try:
-            import matplotlib.pyplot as plt
-            from matplotlib.patches import Polygon as MPLPolygon
-            from matplotlib.collections import PatchCollection
-            import numpy as np
-        except ImportError:
-            raise ImportError(
-                "Matplotlib is required for visualization. Install it with: pip install matplotlib"
-            )
-
-        # Get the area's bounding box and parking spaces
-        bbox = self.bounding_box_local
-        if bbox is None:
-            raise ValueError("Area has no bounding box defined")
-
-        parking_spaces = self.generate_parking_spaces()
-        if parking_spaces is None:
-            raise ValueError("Could not generate parking spaces")
-
-        # Create figure and axis
-        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-
-        # Plot the area's bounding box
-        bbox_coords = np.array(bbox.exterior.coords)
-        bbox_patch = MPLPolygon(
-            bbox_coords,
-            fill=True,
-            alpha=0.2,
-            facecolor="lightgray",
-            edgecolor="black",
-            label="Area boundary",
-        )
-        ax.add_patch(bbox_patch)
-
-        # Plot the parking spaces
-        space_patches = []
-        for i, space in enumerate(parking_spaces):
-            space_coords = np.array(space.exterior.coords)
-            space_patch = MPLPolygon(
-                space_coords,
-                fill=True,
-                alpha=0.5,
-                facecolor="lightblue",
-                edgecolor="blue",
-            )
-            space_patches.append(space_patch)
-
-            # Add parking space number
-            if self.capacity <= 50:  # Only add numbers if not too many spaces
-                centroid = space.centroid
-                ax.text(
-                    centroid.x,
-                    centroid.y,
-                    str(i + 1),
-                    ha="center",
-                    va="center",
-                    fontsize=8,
-                    color="black",
-                )
-
-        # Add all patches to the plot
-        space_collection = PatchCollection(space_patches, match_original=True)
-        ax.add_collection(space_collection)
-
-        # Set plot limits to include everything
-        bbox_bounds = bbox.bounds
-        min_x, min_y, max_x, max_y = bbox_bounds
-
-        # Add some margin
-        margin = max(max_x - min_x, max_y - min_y) * 0.1
-        ax.set_xlim(min_x - margin, max_x + margin)
-        ax.set_ylim(min_y - margin, max_y + margin)
-
-        # Set title and labels
-        if title:
-            ax.set_title(title)
-        else:
-            ax.set_title(
-                f"{self.name} ({self.area_type.name}) - {self.capacity} spaces"
-            )
-
-        ax.set_xlabel("X (meters)")
-        ax.set_ylabel("Y (meters)")
-
-        # Add info text
-        info_text = [
-            f"Area type: {self.area_type.name}",
-            f"Capacity: {self.capacity} vehicles",
-        ]
-
-        if self.area_type == AreaType.LINE:
-            info_text.append(f"Row count: {self.row_count}")
-
-        if self.vehicle_type:
-            info_text.append(f"Vehicle type: {self.vehicle_type.name}")
-            info_text.append(
-                f"Vehicle size: {self.vehicle_type.length:.1f}m × {self.vehicle_type.width:.1f}m"
-            )
-
-        ax.text(
-            0.02,
-            0.98,
-            "\n".join(info_text),
-            transform=ax.transAxes,
-            va="top",
-            ha="left",
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.7),
-        )
-
-        # Set equal aspect to preserve shapes
-        ax.set_aspect("equal")
-
-        # Add a grid
-        ax.grid(True, linestyle="--", alpha=0.3)
-
-        plt.tight_layout()
-
-        return fig
 
 
 class Process(Base):

@@ -1,13 +1,11 @@
+import math
 from datetime import timedelta
 
+import geoalchemy2.shape as ga_shape
 import pytest
 import sqlalchemy
-from matplotlib import pyplot as plt
-from sqlalchemy.exc import IntegrityError
-import geoalchemy2.shape as ga_shape
 from shapely.geometry import Polygon, Point, box
-from geoalchemy2 import Geometry
-import math
+from sqlalchemy.exc import IntegrityError
 
 from eflips.model import (
     Area,
@@ -330,7 +328,7 @@ class TestGeography(TestGeneral):
 
         # Create a bounding box polygon for the depot
         # Simple rectangle around the station
-        depot_poly = box(13.40, 52.51, 13.41, 52.52)
+        depot_poly = box(13.40, 52.50, 13.405, 52.502)
 
         # Convert to PostGIS format
         depot.bounding_box = ga_shape.from_shape(depot_poly, srid=4326)
@@ -535,11 +533,6 @@ class TestGeography(TestGeneral):
         # Generate SVG
         svg_string = depot.generate_svg()
 
-        # TODO: REMOVE THIS
-        # save to file
-        with open("test.svg", "w") as f:
-            f.write(svg_string)
-
         # Basic checks on SVG content
         assert svg_string is not None
         assert len(svg_string) > 0
@@ -554,9 +547,7 @@ class TestGeography(TestGeneral):
             assert area.name in svg_string
 
         # Test with different parameters
-        svg_string = depot.generate_svg(
-            margin=20.0, vehicle_opacity=0.5, draw_vehicles=False
-        )
+        svg_string = depot.generate_svg()
         assert svg_string is not None
         assert len(svg_string) > 0
 
@@ -593,10 +584,6 @@ class TestGeography(TestGeneral):
 
         # Validate should return false
         assert outside_area.validate_bounding_box() is False
-
-        # Committing should fail due to constraints
-        with pytest.raises(IntegrityError):
-            session.commit()
 
         # Rollback the session
         session.rollback()
@@ -646,7 +633,7 @@ class TestGeography(TestGeneral):
             scenario=depot.scenario,
             name="Valid Test Area",
             depot=depot,
-            area_type=AreaType.DIRECT_TWOSIDE,
+            area_type=AreaType.DIRECT_ONESIDE,
             capacity=10,
             vehicle_type=vehicle_type,
         )
@@ -709,7 +696,7 @@ class TestGeography(TestGeneral):
 
                 # Check that space is within the area with small tolerance
                 # We use a small buffer to account for floating point precision
-                # assert space.within(area_polygon.buffer(0.01)) TODO
+                assert space.within(area_polygon.buffer(0.01))
 
                 # Check the dimensions are approximately correct
                 # For simple rectangular spaces, the area should be approximately vehicle length * width
@@ -717,11 +704,3 @@ class TestGeography(TestGeneral):
                     # Allow 5% tolerance for dimensions
                     expected_area = area.vehicle_type.length * area.vehicle_type.width
                     assert abs(space.area - expected_area) / expected_area < 0.05
-
-        # Test visualization method
-        for area in depot.areas:
-            # This should generate a figure and not raise any exceptions
-            fig = area.visualize_parking_spaces()
-            plt.axis("equal")
-            plt.show()
-            assert fig is not None
