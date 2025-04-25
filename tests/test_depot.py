@@ -50,6 +50,7 @@ class TestDepot(TestGeneral):
             depot=depot,
             area_type=AreaType.LINE,
             capacity=6,
+            row_count=1,
         )
         session.add(area)
 
@@ -121,6 +122,7 @@ class TestArea(TestDepot):
             name="line area",
             area_type=AreaType.LINE,
             capacity=6,
+            row_count=1,
         )
 
         session.add(line_area)
