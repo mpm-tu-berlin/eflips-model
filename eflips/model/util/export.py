@@ -216,6 +216,7 @@ def extract_scenario(scenario_id: int, session: Session) -> List[Base]:
 
     scenario.parent_id = None  # type: ignore
     scenario.parent = None  # type: ignore
+    scenario.task_id = None  # type: ignore
     all_related_objects.append(disconnect_obj(scenario))
     return all_related_objects
 

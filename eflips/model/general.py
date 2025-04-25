@@ -88,7 +88,10 @@ class Scenario(Base):
     )
     """The options for the eflips-depot simulation. Stored as a JSON object."""
     task_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=True, unique=True
+        UUID(as_uuid=True),
+        nullable=False,
+        unique=True,
+        server_default=func.gen_random_uuid(),
     )
     """The task id of the simulation. Automatically set to a UUID when a scenario is submitted for simulation."""
 
