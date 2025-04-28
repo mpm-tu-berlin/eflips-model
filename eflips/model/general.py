@@ -1303,6 +1303,10 @@ class Temperatures(Base):
     __tablename__ = "Temperatures"
     __table_args__ = (
         UniqueConstraint("scenario_id", "id"),  # Only one temperature per scenario
+        CheckConstraint(
+            "array_length(datetimes, 1) = array_length(data, 1)",
+            name="equal_array_lengths",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
