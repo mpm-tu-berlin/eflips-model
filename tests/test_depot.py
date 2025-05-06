@@ -14,6 +14,7 @@ from eflips.model import (
     VehicleType,
     AssocPlanProcess,
     Station,
+    ChargingPointType,
 )
 from tests.test_general import TestGeneral
 
@@ -92,6 +93,20 @@ class TestDepot(TestGeneral):
         plan.asssoc_plan_process.append(
             AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2)
         )
+
+        # Add charging point
+        charging_point_type = ChargingPointType(
+            scenario=scenario,
+            name="Test Charging Point",
+            tco_parameters={
+                "procurement": 275000,
+                "lifetime": 20,
+                "cost_escalation_factor": 0.02,
+            }
+        )
+
+        charging_point_type.areas.append(area)
+        session.add(charging_point_type)
 
         session.commit()
 

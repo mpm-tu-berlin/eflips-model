@@ -1,5 +1,5 @@
 from enum import auto, Enum as PyEnum
-from typing import Any, List, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING, Dict
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects import postgresql
 
 from eflips.model import Base
 
@@ -313,6 +314,16 @@ class Station(Base):
     """
     The voltage level of the charging infrastructure. If `is_electrified` is true, this must be set.
     """
+
+    charging_point_type_id: Mapped[int] = mapped_column(
+        ForeignKey("ChargingPointType.id"), nullable=True
+    )
+    """The unique identifier of the charging point type. Foreign key to :attr:`ChargingPointType.id`"""
+
+    charging_point_type: Mapped["chargingPointType"] = relationship(
+        "ChargingPointType", back_populates="stations"
+    )
+    """The charging point type. This is used to represent the different types of charging points installed at stations or areas. It is mainly relevant for TCO calculations."""
 
     depot: Mapped["Depot"] = relationship("Depot", back_populates="station")
     """The (optional) depot that is associated with this station. Only set if the station has a depot."""

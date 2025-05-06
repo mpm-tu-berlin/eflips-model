@@ -172,6 +172,15 @@ class Area(Base):
     row_count: Mapped[int] = mapped_column(Integer, nullable=True)
     """Number of side-by-side rows in a LINE area. Must be set for areas of type LINE."""
 
+    charging_point_type_id: Mapped[int] = mapped_column(
+        ForeignKey("ChargingPointType.id"), nullable=True
+    )
+
+    charging_point_type: Mapped["chargingPointType"] = relationship(
+        "ChargingPointType", back_populates="areas"
+    )
+    """The type of charging point in this area."""
+
     capacity_constraint = CheckConstraint(
         "capacity > 0 AND "
         "((area_type = 'DIRECT_TWOSIDE' AND row_count IS NULL AND capacity % 2 = 0) "
