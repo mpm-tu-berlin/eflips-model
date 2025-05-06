@@ -325,6 +325,12 @@ class Station(Base):
     )
     """The charging point type. This is used to represent the different types of charging points installed at stations or areas. It is mainly relevant for TCO calculations."""
 
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The TCO parameters of the vehicle type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
+    Stored as a JSON object."""
+
     depot: Mapped["Depot"] = relationship("Depot", back_populates="station")
     """The (optional) depot that is associated with this station. Only set if the station has a depot."""
 

@@ -520,6 +520,12 @@ class TestStation(TestGeneral):
             power_total=44,
             charge_type=ChargeType.DEPOT,
             voltage_level=VoltageLevel.LV,
+            tco_parameters={
+                "procurement": 500000.0,
+                "lifetime": 20,
+                "cost_escalation": 0.02
+
+            },
         )
         session.add(station)
 

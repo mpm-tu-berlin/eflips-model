@@ -658,6 +658,12 @@ class VehicleType(Base):
     allowed_mass_constraint = CheckConstraint("allowed_mass > 0")
     _table_args_list.append(allowed_mass_constraint)
 
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The TCO parameters of the vehicle type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
+    Stored as a JSON object."""
+
     consumption: Mapped[float] = mapped_column(Float, nullable=True)
     """
     The vehicle's energy consumption in kWh/km. This is used to calculate the energy consumption of a trip. Can
@@ -755,6 +761,13 @@ class BatteryType(Base):
 
     chemistry: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSONB)
     """The chemistry of the battery. Stored as a JSON object, defined by eflips-LCA"""
+
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The TCO parameters of the battery type. It should contain at least "procurement_per_kWh", "lifetime" and "price_escalation_factor". 
+    Stored as a JSON object."""
+
 
     def __repr__(self) -> str:
         return f"<BatteryType (id={self.id}, specific_mass={self.specific_mass}, chemistry={self.chemistry})>"
