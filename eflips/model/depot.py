@@ -176,7 +176,7 @@ class Area(Base):
         ForeignKey("ChargingPointType.id"), nullable=True
     )
 
-    charging_point_type: Mapped["chargingPointType"] = relationship(
+    charging_point_type: Mapped["ChargingPointType"] = relationship(
         "ChargingPointType", back_populates="areas"
     )
     """The type of charging point in this area."""

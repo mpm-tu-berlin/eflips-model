@@ -768,7 +768,6 @@ class BatteryType(Base):
     """The TCO parameters of the battery type. It should contain at least "procurement_per_kWh", "lifetime" and "price_escalation_factor". 
     Stored as a JSON object."""
 
-
     def __repr__(self) -> str:
         return f"<BatteryType (id={self.id}, specific_mass={self.specific_mass}, chemistry={self.chemistry})>"
 
@@ -1375,8 +1374,6 @@ class Temperatures(Base):
     The temperatures in degrees Celsius. The order of the temperatures should match the order of the datetimes.
     The length of this list should be the same as the length of the datetimes.
     """
-
-
 
 
 class ChargingPointType(Base):

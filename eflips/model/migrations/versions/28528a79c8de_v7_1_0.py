@@ -13,8 +13,8 @@ from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
-revision: str = '28528a79c8de'
-down_revision: Union[str, None] = '7c26ba933d67'
+revision: str = "28528a79c8de"
+down_revision: Union[str, None] = "7c26ba933d67"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -28,12 +28,13 @@ def upgrade() -> None:
         sa.Column("scenario_id", sa.BigInteger(), nullable=False),
         sa.Column("name", sa.Text(), nullable=True),
         sa.Column("name_short", sa.Text(), nullable=True),
-        sa.Column("tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
         sa.ForeignKeyConstraint(
             ["scenario_id"],
             ["Scenario.id"],
         ),
-
         sa.PrimaryKeyConstraint("id"),
     )
 
@@ -62,21 +63,26 @@ def upgrade() -> None:
         ["id"],
     )
 
-
     # Add tco parameters to vehicle type
     op.add_column(
         "VehicleType",
-        sa.Column("tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
     )
     # to battery type
     op.add_column(
         "BatteryType",
-        sa.Column("tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
     )
     # to station
     op.add_column(
         "Station",
-        sa.Column("tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
     )
     # ### end Alembic commands ###
 

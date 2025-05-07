@@ -100,7 +100,6 @@ class TestDepot(TestGeneral):
             "procurement": 3400000,
             "lifetime": 20,
             "cost_escalation_factor": 0.02,
-
         }
 
         depot.tco_parameters = tco_parameters
@@ -113,7 +112,7 @@ class TestDepot(TestGeneral):
                 "procurement": 275000,
                 "lifetime": 20,
                 "cost_escalation_factor": 0.02,
-            }
+            },
         )
 
         charging_point_type.areas.append(area)
@@ -327,8 +326,8 @@ class TestProcess(TestGeneral):
 
         assert process.plans == [plan]
 
-class TestTcoParameters(TestDepot):
 
+class TestTcoParameters(TestDepot):
     def test_tco_parameters(self, depot_with_content, session, scenario):
         # Test if the TCO parameters are set correctly
         depot = depot_with_content
@@ -342,4 +341,3 @@ class TestTcoParameters(TestDepot):
         assert area.charging_point_type.tco_parameters["procurement"] == 275000
         assert area.charging_point_type.tco_parameters["lifetime"] == 20
         assert area.charging_point_type.tco_parameters["cost_escalation_factor"] == 0.02
-

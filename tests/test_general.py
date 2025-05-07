@@ -637,8 +637,8 @@ class TestVehicleType(TestGeneral):
             tco_parameters={
                 "procurement": 350.0,
                 "lifetime": 6,
-                "cost_escalation_factor": -0.03
-            }
+                "cost_escalation_factor": -0.03,
+            },
         )
         session.add(vehicle_type)
         session.commit()
@@ -740,12 +740,14 @@ class TestVehicleType(TestGeneral):
 class TestBatteryType(TestGeneral):
     def test_create_battery_type(self, session, scenario):
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"},
+            scenario=scenario,
+            specific_mass=100,
+            chemistry={"test": "test"},
             tco_parameters={
                 "procurement": 350.0,
                 "lifetime": 6,
-                "cost_escalation_factor": -0.03
-            }
+                "cost_escalation_factor": -0.03,
+            },
         )
         session.add(battery_type)
         session.commit()

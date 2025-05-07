@@ -523,8 +523,7 @@ class TestStation(TestGeneral):
             tco_parameters={
                 "procurement": 500000.0,
                 "lifetime": 20,
-                "cost_escalation": 0.02
-
+                "cost_escalation": 0.02,
             },
         )
         session.add(station)
@@ -535,7 +534,7 @@ class TestStation(TestGeneral):
             tco_parameters={
                 "procurement": 500000.0,
                 "lifetime": 20,
-                "cost_escalation": 0.02
+                "cost_escalation": 0.02,
             },
         )
         session.add(charging_point_type)
