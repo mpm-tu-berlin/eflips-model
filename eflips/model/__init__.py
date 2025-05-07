@@ -57,6 +57,7 @@ from eflips.model.general import (
 )
 from eflips.model.general import ConsumptionLut as ConsumptionLut
 from eflips.model.general import Temperatures as Temperatures
+from eflips.model.general import ChargingPointType as ChargingPointType
 
 from eflips.model.network import ChargeType as ChargeType
 from eflips.model.network import Line as Line

@@ -14,6 +14,7 @@ from eflips.model import (
     VehicleType,
     AssocPlanProcess,
     Station,
+    ChargingPointType,
 )
 from tests.test_general import TestGeneral
 
@@ -92,6 +93,30 @@ class TestDepot(TestGeneral):
         plan.asssoc_plan_process.append(
             AssocPlanProcess(scenario=scenario, process=charging, plan=plan, ordinal=2)
         )
+
+        # Add tco parameters
+
+        tco_parameters = {
+            "procurement": 3400000,
+            "lifetime": 20,
+            "cost_escalation_factor": 0.02,
+        }
+
+        depot.tco_parameters = tco_parameters
+
+        # Add charging point
+        charging_point_type = ChargingPointType(
+            scenario=scenario,
+            name="Test Charging Point",
+            tco_parameters={
+                "procurement": 275000,
+                "lifetime": 20,
+                "cost_escalation_factor": 0.02,
+            },
+        )
+
+        charging_point_type.areas.append(area)
+        session.add(charging_point_type)
 
         session.commit()
 
@@ -300,3 +325,19 @@ class TestProcess(TestGeneral):
         session.commit()
 
         assert process.plans == [plan]
+
+
+class TestTcoParameters(TestDepot):
+    def test_tco_parameters(self, depot_with_content, session, scenario):
+        # Test if the TCO parameters are set correctly
+        depot = depot_with_content
+        tco_parameters = depot.tco_parameters
+
+        assert tco_parameters["procurement"] == 3400000
+        assert tco_parameters["lifetime"] == 20
+        assert tco_parameters["cost_escalation_factor"] == 0.02
+
+        area = depot.areas[0]
+        assert area.charging_point_type.tco_parameters["procurement"] == 275000
+        assert area.charging_point_type.tco_parameters["lifetime"] == 20
+        assert area.charging_point_type.tco_parameters["cost_escalation_factor"] == 0.02
