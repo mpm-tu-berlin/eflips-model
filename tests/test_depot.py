@@ -704,3 +704,71 @@ class TestGeography(TestGeneral):
                     # Allow 5% tolerance for dimensions
                     expected_area = area.vehicle_type.length * area.vehicle_type.width
                     assert abs(space.area - expected_area) / expected_area < 0.05
+
+    def test_x_y_alpha(self, session, depot_with_geography):
+        """
+        This method tests the x,y and alpha properties of the area.
+
+        :param session:
+        :param depot_with_geography:
+        :return:
+        """
+
+        # Make sure all areas have a bounding box
+        depot_local = depot_with_geography.bounding_box_local
+        minx, miny, maxx, maxy = depot_local.bounds
+
+        assert len(depot_with_geography.areas) > 0
+        for i, area in enumerate(depot_with_geography.areas):
+            if area.bounding_box is None:
+                # Use different origin points for each area
+                spacing = 20  # meters between areas
+                origin = Point(minx + 10 + (i * spacing * 2), miny + 10 + (i * spacing))
+                angle = 0 if i % 2 == 0 else math.pi / 6
+                area.set_bounding_box_from_local(origin, angle=angle)
+
+        # Test x, y and alpha properties
+        for i, area in enumerate(depot_with_geography.areas):
+            spacing = 20  # meters between areas
+            expected_origin = Point(
+                minx + 10 + (i * spacing * 2), miny + 10 + (i * spacing)
+            )
+            expected_x = expected_origin.x
+            expected_y = expected_origin.y
+            expected_angle = 0 if i % 2 == 0 else math.pi / 6
+
+            # Check x, y and alpha
+            x, y, alpha = area._coordinates()
+
+            assert pytest.approx(x, rel=0.01) == expected_x
+            assert pytest.approx(y, rel=0.01) == expected_y
+            assert pytest.approx(alpha, abs=0.001) == expected_angle
+
+            # Check the x, y and alpha properties
+            assert x == area.x
+            assert y == area.y
+            assert alpha == area.alpha
+
+    def test_x_y_alpha_no_geography(self, session, depot_with_geography):
+        """
+        This method tests the x,y and alpha properties of the area.
+
+        :param session:
+        :param depot_with_geography:
+        :return:
+        """
+
+        # Remove the bounding boxes from all areas
+        for area in depot_with_geography.areas:
+            area.bounding_box = None
+
+        # Test x, y and alpha properties
+        assert len(depot_with_geography.areas) > 0
+        for i, area in enumerate(depot_with_geography.areas):
+            # Check x, y and alpha
+            assert area._coordinates() is None
+
+            # Check the x, y and alpha properties
+            assert area.x is None
+            assert area.y is None
+            assert area.alpha is None

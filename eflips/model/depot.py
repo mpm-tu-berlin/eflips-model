@@ -1,15 +1,13 @@
 from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
-from math import sin, cos, sqrt, radians, degrees
-from typing import List, Tuple, TYPE_CHECKING, Optional, Dict, Any
+from math import sin, cos, sqrt, radians, degrees, atan2
+from typing import List, Tuple, TYPE_CHECKING, Optional, Dict
 
 import geoalchemy2.shape as ga_shape
-import svgwrite.container  # type: ignore[import-untyped]
-import svgwrite.shapes  # type: ignore[import-untyped]
 from geoalchemy2 import Geometry
 from pyproj import Transformer, CRS
-from shapely.geometry import Polygon as ShapelyPolygon, Point, box  # type: ignore[import-untyped]
 from shapely import affinity  # type: ignore[import-untyped]
+from shapely.geometry import Polygon as ShapelyPolygon, Point, box  # type: ignore[import-untyped]
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -236,6 +234,8 @@ class Depot(Base):
         """
         Generates an SVG visualization of the depot, including areas and parking spaces.
 
+        **NOTE: This method requires the `svgwrite` library to be installed.**
+
         Args:
             width: The width of the SVG in pixels
             height: The height of the SVG in pixels
@@ -246,7 +246,17 @@ class Depot(Base):
 
         Returns:
             The SVG as a string
+
+        :raise ImportError: If svgwrite is not installed
         """
+        try:
+            import svgwrite.container  # type: ignore[import-untyped]
+            import svgwrite.shapes  # type: ignore[import-untyped]
+        except ImportError:
+            raise ImportError(
+                "svgwrite is not installed. Please install it to use this feature."
+            )
+
         # Check if the depot has a bounding box
         if self.bounding_box is None:
             return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" font-size="16">No bounding box defined for depot</text></svg>'
@@ -686,6 +696,77 @@ class Area(Base):
             raise NotImplementedError("Not implemented")
         else:
             return None
+
+    def _coordinates(self) -> None | Tuple[float, float, float]:
+        """
+        Gets the x, and y coordinates of the area's first point in the local coordinate system.
+        Also returns the angle of the area in the local coordinate system.
+
+        :return: A tuple containing the x, y coordinates and the angle of the area in the local coordinate system.
+        """
+        if self.bounding_box_local is None:
+            return None
+
+        # Get the bounding box in local coordinates
+        bbox = self.bounding_box_local
+
+        # Extract the coordinates of the bounding box
+        # Note: shapely returns coordinates as [(x0,y0), (x1,y1), ..., (x0,y0)] with the second-to-last point
+        # being the same as the original first point
+        origin = list(bbox.exterior.coords)[-2]
+
+        x = origin[0]
+        y = origin[1]
+
+        # THe angle is between the origin (second-to-last point) and the last point
+        last_point = list(bbox.exterior.coords)[-1]
+        dx = last_point[0] - origin[0]
+        dy = last_point[1] - origin[1]
+        alpha = atan2(dy, dx)
+
+        return x, y, alpha
+
+    @property
+    def x(self) -> Optional[float]:
+        """
+        Represents the X (East (+) - West (-)) coordinate of the area in the depot's local coordinate system.
+        This is the coordinate of the first corner of the area in the local coordinate system.
+        :return: A float representing the X coordinate of the area in the local coordinate system.
+        """
+        result = self._coordinates()
+        if result is None:
+            return None
+        else:
+            x, _, _ = result
+            return x
+
+    @property
+    def y(self) -> Optional[float]:
+        """
+        Represents the Y (North (+) - South (-)) coordinate of the area in the depot's local coordinate system.
+        This is the coordinate of the bottom left corner of the area in the local coordinate system.
+        :return: A float representing the Y coordinate of the area in the local coordinate system.
+        """
+        result = self._coordinates()
+        if result is None:
+            return None
+        else:
+            _, y, _ = result
+            return y
+
+    @property
+    def alpha(self) -> Optional[float]:
+        """
+        Represents the angle of the area in the depot's local coordinate system.
+        This is the angle of the bottom left edge of the area in the local coordinate system.
+        :return: A float representing the angle of the area in the local coordinate system, in radians.
+        """
+        result = self._coordinates()
+        if result is None:
+            return None
+        else:
+            _, _, alpha = result
+            return alpha
 
     def __repr__(self) -> str:
         return f"<Area(id={self.id}, name={self.name}, area_type={self.area_type}, capacity={self.capacity})>"
