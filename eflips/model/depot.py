@@ -645,7 +645,7 @@ class Area(Base):
 
         if self.area_type == AreaType.LINE:
             vehicles_per_row = self.capacity // self.row_count
-            assert vehicles_per_row.is_integer()
+            assert vehicles_per_row == int(vehicles_per_row)
 
             # The length is the length of the vehicle plus the spacing between the vehicles
             # But without the spacing at the end of the row
