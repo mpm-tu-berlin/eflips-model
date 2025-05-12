@@ -49,6 +49,8 @@ class Depot(Base):
     """A name for the depot."""
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the depot."""
+    bounding_box = mapped_column(Geometry("POLYGON", srid=4326), nullable=True)
+    """The bounding box of the depot as a PostGIS Polygon. Uses WGS84 coordinate system (SRID 4326)."""
 
     station_id: Mapped[int] = mapped_column(ForeignKey("Station.id"))
     """The station where the depot is located. This depot handles :attr:`Rotation` starting and ending at this station. Foreign key to :attr:`Station.id`."""
@@ -61,9 +63,6 @@ class Depot(Base):
 
     areas: Mapped[List["Area"]] = relationship("Area", back_populates="depot")
     """The areas of this depot."""
-
-    bounding_box = mapped_column(Geometry("POLYGON", srid=4326), nullable=True)
-    """The bounding box of the depot as a PostGIS Polygon. Uses WGS84 coordinate system (SRID 4326)."""
 
     __table_args__ = (
         # What we actually would like is have station_id globally unique, but this raises
