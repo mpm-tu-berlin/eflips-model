@@ -1,3 +1,5 @@
+# type: ignore
+
 """8.0.0
 
 Revision ID: 801705905f79
@@ -5,6 +7,7 @@ Revises: 7c26ba933d67
 Create Date: 2025-05-12 12:38:11.116470
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
