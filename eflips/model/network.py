@@ -284,7 +284,7 @@ class Station(Base):
     - `voltage_level` must be set
     """
 
-    is_electrifiable = mapped_column(Boolean, nullable=False)
+    is_electrifiable = mapped_column(Boolean, nullable=False, default=True)
     """
     Whether the station can be electrified. This is used to determine whether a station can be electrified in the
     simulation. If the station is electrified, this must be set to true.
