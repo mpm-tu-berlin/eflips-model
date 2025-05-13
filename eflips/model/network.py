@@ -376,7 +376,7 @@ class Station(Base):
             name="station_electrified_check",
         ),
         CheckConstraint(
-            "is_electrified=TRUE AND is_electrifiable=TRUE",
+            "NOT (is_electrified=TRUE AND is_electrifiable=FALSE)",
             name="station_electrified_electrifiable_check",
         ),
     )
