@@ -284,6 +284,12 @@ class Station(Base):
     - `voltage_level` must be set
     """
 
+    is_electrifiable = mapped_column(Boolean, nullable=False, default=True)
+    """
+    Whether the station can be electrified. This is used to determine whether a station can be electrified in the
+    simulation. If the station is electrified, this must be set to true.
+    """
+
     amount_charging_places = mapped_column(Integer, nullable=True)
     """
     The amount of charging poles at the station. If `is_electrified` is true, this must be set.
@@ -368,6 +374,10 @@ class Station(Base):
             "AND charge_type IS NULL "
             "AND voltage_level IS NULL)",
             name="station_electrified_check",
+        ),
+        CheckConstraint(
+            "NOT (is_electrified=TRUE AND is_electrifiable=FALSE)",
+            name="station_electrified_electrifiable_check",
         ),
     )
 
