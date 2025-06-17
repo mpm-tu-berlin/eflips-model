@@ -53,9 +53,9 @@ class Depot(Base):
     """The bounding box of the depot as a PostGIS Polygon. Uses WGS84 coordinate system (SRID 4326)."""
 
     station_id: Mapped[int] = mapped_column(ForeignKey("Station.id"))
-    """The station where the depot is located. This depot handles :attr:`Rotation` starting and ending at this station. Foreign key to :attr:`Station.id`."""
+    """The station where the depot is located. This depot handles :attr:`Block` starting and ending at this station. Foreign key to :attr:`Station.id`."""
     station: Mapped["Station"] = relationship("Station", back_populates="depot")
-    """The station where the depot is located. This depot handles :attr:`Rotation` starting and ending at this station."""
+    """The station where the depot is located. This depot handles :attr:`Block` starting and ending at this station."""
 
     default_plan_id: Mapped[int] = mapped_column(ForeignKey("Plan.id"))
     """The default plan of this depot. Foreign key to :attr:`Plan.id`."""

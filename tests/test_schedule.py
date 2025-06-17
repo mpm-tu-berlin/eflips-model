@@ -6,7 +6,7 @@ import sqlalchemy
 from eflips.model import (
     AssocRouteStation,
     Line,
-    Rotation,
+    Block,
     Route,
     Station,
     StopTime,
@@ -60,17 +60,17 @@ class TestTripAndStopTime(TestGeneral):
         )
         session.add(vehicle_type)
 
-        rotation = Rotation(
+        block = Block(
             scenario=scenario,
             vehicle_type=vehicle_type,
             allow_opportunity_charging=False,
         )
-        session.add(rotation)
+        session.add(block)
 
         trip = Trip(
             scenario=scenario,
             route=route,
-            rotation=rotation,
+            block=block,
             trip_type=TripType.PASSENGER,
             departure_time=datetime(
                 year=2020,
@@ -447,7 +447,7 @@ class TestTripAndStopTime(TestGeneral):
             session.rollback()
 
 
-class TestRotation(TestGeneral):
+class TestBlock(TestGeneral):
     @pytest.fixture
     def trips(self, session, scenario):
         station_1 = Station(
@@ -518,7 +518,7 @@ class TestRotation(TestGeneral):
 
         return trips
 
-    def test_create_rotation(self, session, scenario, trips):
+    def test_create_block(self, session, scenario, trips):
         session.add_all(trips)
 
         vehicle_type = VehicleType(
@@ -531,14 +531,14 @@ class TestRotation(TestGeneral):
         )
         session.add(vehicle_type)
 
-        rotation = Rotation(
+        block = Block(
             scenario=scenario,
             trips=trips,
             vehicle_type=vehicle_type,
             allow_opportunity_charging=False,
         )
 
-    def test_rotation_invalid_geography(self, session, scenario, trips):
+    def test_block_invalid_geography(self, session, scenario, trips):
         # If we remove on trip from teh middle, a geographical discontinuity is created
         trip = trips.pop(1)
         session.expunge(trip)
@@ -555,17 +555,17 @@ class TestRotation(TestGeneral):
         session.add(vehicle_type)
 
         with pytest.warns(ConsistencyWarning):
-            rotation = Rotation(
+            block = Block(
                 scenario=scenario,
                 trips=trips,
                 vehicle_type=vehicle_type,
                 allow_opportunity_charging=False,
             )
-            session.add(rotation)
+            session.add(block)
             session.commit()
         session.rollback()
 
-    def test_rotation_invalid_time(self, session, scenario, trips):
+    def test_block_invalid_time(self, session, scenario, trips):
         # Change the end time of the first trip to be beyond the start time of the second trip
         trips[0].arrival_time = trips[1].departure_time + timedelta(minutes=1)
         session.add_all(trips)
@@ -581,12 +581,12 @@ class TestRotation(TestGeneral):
         session.add(vehicle_type)
 
         with pytest.warns(ConsistencyWarning):
-            rotation = Rotation(
+            block = Block(
                 scenario=scenario,
                 trips=trips,
                 vehicle_type=vehicle_type,
                 allow_opportunity_charging=False,
             )
-            session.add(rotation)
+            session.add(block)
             session.commit()
         session.rollback()

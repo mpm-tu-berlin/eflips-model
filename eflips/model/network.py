@@ -236,10 +236,10 @@ class ChargeType(PyEnum):
     """
 
     depb = auto()
-    """Only charge when vehicle is not on a rotation"""
+    """Only charge when vehicle is not on a block"""
 
     oppb = auto()
-    """Aka „terminus charging“. While on a rotation, charge in the breaks between trips"""
+    """Aka „terminus charging“. While on a block, charge in the breaks between trips"""
 
     DEPOT = depb
     """Legacy value for depb"""

@@ -20,7 +20,7 @@ from eflips.model import (
     Line,
     Plan,
     Process,
-    Rotation,
+    Block,
     Route,
     Scenario,
     setup_database,
@@ -230,13 +230,13 @@ class TestGeneral:
         duration = timedelta(minutes=20)
         trips = []
 
-        rotation = Rotation(
+        block = Block(
             scenario=scenario,
             trips=trips,
             vehicle_type=vehicle_type,
             allow_opportunity_charging=False,
         )
-        session.add(rotation)
+        session.add(block)
 
         for i in range(15):
             # forward
@@ -247,7 +247,7 @@ class TestGeneral:
                     trip_type=TripType.PASSENGER,
                     departure_time=first_departure + 2 * i * interval,
                     arrival_time=first_departure + 2 * i * interval + duration,
-                    rotation=rotation,
+                    block=block,
                 )
             )
             stop_times = [
@@ -279,7 +279,7 @@ class TestGeneral:
                     trip_type=TripType.PASSENGER,
                     departure_time=first_departure + (2 * i + 1) * interval,
                     arrival_time=first_departure + (2 * i + 1) * interval + duration,
-                    rotation=rotation,
+                    block=block,
                 )
             )
             stop_times = [
@@ -541,10 +541,10 @@ class TestScenario(TestGeneral):
         assert scenario.parent_id == 1
         assert parent.children == [scenario]
 
-    def test_select_rotations(self, session, sample_content):
-        orig_len_rot = len(sample_content.rotations)
+    def test_select_blocks(self, session, sample_content):
+        orig_len_rot = len(sample_content.blocks)
 
-        sample_content.select_rotations(
+        sample_content.select_blocks(
             session,
             datetime(
                 year=2020,
@@ -558,14 +558,14 @@ class TestScenario(TestGeneral):
             time_window=timedelta(minutes=700),
         )
 
-        rotations = session.query(Rotation).count()
+        blocks = session.query(Block).count()
 
-        # No rotations should be selected as the time window is too short
-        assert rotations < orig_len_rot
+        # No blocks should be selected as the time window is too short
+        assert blocks < orig_len_rot
 
         session.rollback()
 
-        sample_content.select_rotations(
+        sample_content.select_blocks(
             session,
             datetime(
                 year=2020,
@@ -579,14 +579,14 @@ class TestScenario(TestGeneral):
             time_window=timedelta(minutes=900),
         )
 
-        rotations = session.query(Rotation).count()
+        blocks = session.query(Block).count()
 
-        # All rotations should be selected as the time window is long enough
-        assert rotations == orig_len_rot
+        # All blocks should be selected as the time window is long enough
+        assert blocks == orig_len_rot
 
-    def test_select_rotations_without_providing_timezone(self, session, sample_content):
+    def test_select_blocks_without_providing_timezone(self, session, sample_content):
         with pytest.raises(ValueError):
-            sample_content.select_rotations(
+            sample_content.select_blocks(
                 session,
                 datetime(
                     year=2020,

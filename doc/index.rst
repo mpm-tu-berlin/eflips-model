@@ -26,7 +26,7 @@ The recommended way to validate compliance of a database is to create an instanc
 
 .. code-block:: bash
 
-   postgresql_autodoc -d $DATABASE -h $HOST -u $USER --password=$PASSWORD -t html -l /usr/share/postgresql-autodoc/ --table=Area,AssocAreaProcess,AssocPlanProcess,AssocRouteStation,AssocVehicleTypeVehicleClass,BatteryType,Depot,Event,Line,Plan,Process,Rotation,Route,Scenario,Station,StopTime,Trip,Vehicle,VehicleClass,VehicleType
+   postgresql_autodoc -d $DATABASE -h $HOST -u $USER --password=$PASSWORD -t html -l /usr/share/postgresql-autodoc/ --table=Area,AssocAreaProcess,AssocPlanProcess,AssocRouteStation,AssocVehicleTypeVehicleClass,BatteryType,Depot,Event,Line,Plan,Process,Block,Route,Scenario,Station,StopTime,Trip,Vehicle,VehicleClass,VehicleType
 
 (If new tables are added to the database, the list of tables and columns in the command above must be updated.)
 
@@ -34,7 +34,7 @@ postgresql-autotoc can also generate graphs of the database schema. The command 
 
 .. code-block:: bash
 
-   postgresql_autodoc -d $DATABASE -h $HOST -u $USER --password=$PASSWORD -t neato -l /usr/share/postgresql-autodoc/ --table=Area,AssocAreaProcess,AssocPlanProcess,AssocRouteStation,AssocVehicleTypeVehicleClass,BatteryType,Depot,Event,Line,Plan,Process,Rotation,Route,Scenario,Station,StopTime,Trip,Vehicle,VehicleClass,VehicleType
+   postgresql_autodoc -d $DATABASE -h $HOST -u $USER --password=$PASSWORD -t neato -l /usr/share/postgresql-autodoc/ --table=Area,AssocAreaProcess,AssocPlanProcess,AssocRouteStation,AssocVehicleTypeVehicleClass,BatteryType,Depot,Event,Line,Plan,Process,Block,Route,Scenario,Station,StopTime,Trip,Vehicle,VehicleClass,VehicleType
    # Manually edit the generated file to add the lines
    #   overlap=false;
    #   splines=true;
@@ -48,7 +48,7 @@ The recommended way to remove all simulation results from the database is to use
 
 .. code-block:: sql
 
-   UPDATE "Rotation" set vehicle_id=NULL;
+   UPDATE "Block" set vehicle_id=NULL;
    DELETE FROM "Event";
    DELETE FROM "Vehicle";
 

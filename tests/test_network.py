@@ -8,7 +8,7 @@ from eflips.model import (
     AssocRouteStation,
     ChargeType,
     Line,
-    Rotation,
+    Block,
     Route,
     Station,
     StopTime,
@@ -392,18 +392,18 @@ class TestRoute(TestGeneral):
         )
         session.add(vehicle_type)
 
-        rotation = Rotation(
+        block = Block(
             scenario=scenario,
             vehicle_type=vehicle_type,
             allow_opportunity_charging=False,
         )
-        session.add(rotation)
+        session.add(block)
 
         # Create a trip
         trip = Trip(
             scenario=scenario,
             route=route,
-            rotation=rotation,
+            block=block,
             departure_time=datetime(2020, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
             arrival_time=datetime(2020, 1, 1, 13, 0, 0, tzinfo=timezone.utc),
             trip_type=TripType.PASSENGER,

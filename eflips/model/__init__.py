@@ -68,7 +68,7 @@ from eflips.model.network import AssocRouteStation as AssocRouteStation
 from eflips.model.schedule import StopTime as StopTime
 from eflips.model.schedule import TripType as TripType
 from eflips.model.schedule import Trip as Trip
-from eflips.model.schedule import Rotation as Rotation
+from eflips.model.schedule import Block as Block
 
 from eflips.model.depot import Depot as Depot
 from eflips.model.depot import Plan as Plan

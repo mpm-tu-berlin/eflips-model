@@ -30,7 +30,7 @@ from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, 
 
 from eflips.model import Base, ConsistencyWarning
 from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
-from eflips.model.schedule import Rotation, StopTime, Trip
+from eflips.model.schedule import Block, StopTime, Trip
 
 if TYPE_CHECKING:
     from eflips.model import (
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
         StopTime,
         Trip,
         AssocRouteStation,
-        Rotation,
+        Block,
         Depot,
         Plan,
         Area,
@@ -153,8 +153,8 @@ class Scenario(Base):
         "Trip", back_populates="scenario", cascade="all, delete"
     )
     """A list of trips."""
-    rotations: Mapped[List["Rotation"]] = relationship(
-        "Rotation", back_populates="scenario", cascade="all, delete"
+    blocks: Mapped[List["Block"]] = relationship(
+        "Block", back_populates="scenario", cascade="all, delete"
     )
     """A list of events."""
     events: Mapped[List["Event"]] = relationship(
@@ -282,11 +282,11 @@ class Scenario(Base):
                 self._copy_object(trip, session, scenario_copy)
                 trip_id_map[original_id] = trip
 
-            rotation_id_map: Dict[int, "Rotation"] = {}
-            for rotation in self.rotations:
-                original_id = rotation.id
-                self._copy_object(rotation, session, scenario_copy)
-                rotation_id_map[original_id] = rotation
+            block_id_map: Dict[int, "Block"] = {}
+            for block in self.blocks:
+                original_id = block.id
+                self._copy_object(block, session, scenario_copy)
+                block_id_map[original_id] = block
 
             event_id_map: Dict[int, "Event"] = {}
             for event in self.events:
@@ -400,18 +400,18 @@ class Scenario(Base):
         for trip in scenario_copy.trips:
             trip.route_id = route_id_map[trip.route_id].id
 
-        # Trip <-> Rotation
+        # Trip <-> Block
         for trip in scenario_copy.trips:
-            trip.rotation_id = rotation_id_map[trip.rotation_id].id
+            trip.block_id = block_id_map[trip.block_id].id
 
-        # Rotation <-> VehicleType
-        for rotation in scenario_copy.rotations:
-            rotation.vehicle_type_id = vehicle_type_id_map[rotation.vehicle_type_id].id
+        # Block <-> VehicleType
+        for block in scenario_copy.blocks:
+            block.vehicle_type_id = vehicle_type_id_map[block.vehicle_type_id].id
 
-        # Rotation <-> Vehicle
-        for rotation in scenario_copy.rotations:
-            if rotation.vehicle_id is not None:
-                rotation.vehicle_id = vehicle_id_map[rotation.vehicle_id].id
+        # Block <-> Vehicle
+        for block in scenario_copy.blocks:
+            if block.vehicle_id is not None:
+                block.vehicle_id = vehicle_id_map[block.vehicle_id].id
 
         # Event <-> VehicleType
         for event in scenario_copy.events:
@@ -494,28 +494,28 @@ class Scenario(Base):
         session.flush()
         return scenario_copy
 
-    def select_rotations(
+    def select_blocks(
         self, session: Session, start_time: datetime, time_window: timedelta
     ) -> None:
         """
-        Keeps only the rotations that are within the time window. Deletes all other rotations from the database. This
+        Keeps only the blocks that are within the time window. Deletes all other blocks from the database. This
         method is useful if (for example) your import gave you a six-month schedule, but you only want to simulate a
         week of it.
 
         :param session: An SQLAlchemy session to a database with eflips-model tables.
-        :param start_time: The start time of the time window. Rotations that start before this time are not selected.
+        :param start_time: The start time of the time window. Blocks that start before this time are not selected.
                            This time must have a timezone.
-        :param time_window: The time window. Rotations that end after this time are not selected.
+        :param time_window: The time window. Blocks that end after this time are not selected.
         :return: None
         """
 
-        rotations = self.rotations
+        blocks = self.blocks
 
         if start_time.tzinfo is None or start_time.tzinfo.utcoffset(start_time) is None:
             raise ValueError("start_time must have a timezone")
 
-        for rotation in rotations:
-            trips = rotation.trips
+        for block in blocks:
+            trips = block.trips
             trips.sort(key=lambda x: x.departure_time)
 
             if (
@@ -527,7 +527,7 @@ class Scenario(Base):
                         session.delete(stop_time)
                     session.delete(trip)
 
-                session.delete(rotation)
+                session.delete(block)
         session.flush()
 
     def __repr__(self) -> str:
@@ -537,7 +537,7 @@ class Scenario(Base):
 class VehicleType(Base):
     """
     This class represents a vehicle type, containing the technical parameters shared by all vehicles of this type.
-    It is used by vehicles (which are of a specific type) and by the rotations (which are for specific vehicle types).
+    It is used by vehicles (which are of a specific type) and by the blocks (which are for specific vehicle types).
     """
 
     __tablename__ = "VehicleType"
@@ -668,10 +668,8 @@ class VehicleType(Base):
     )
     """A list of vehicle classes."""
 
-    rotations: Mapped[List["Rotation"]] = relationship(
-        "Rotation", back_populates="vehicle_type"
-    )
-    """A list of rotations."""
+    blocks: Mapped[List["Block"]] = relationship("Block", back_populates="vehicle_type")
+    """A list of blocks."""
 
     events: Mapped[List["Event"]] = relationship("Event", back_populates="vehicle_type")
     """A list of events."""
@@ -780,10 +778,8 @@ class Vehicle(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the vehicle."""
 
-    rotations: Mapped[List["Rotation"]] = relationship(
-        "Rotation", back_populates="vehicle"
-    )
-    """A list of rotations this vehicle is used for."""
+    blocks: Mapped[List["Block"]] = relationship("Block", back_populates="vehicle")
+    """A list of blocks this vehicle is used for."""
 
     events: Mapped[List["Event"]] = relationship("Event", back_populates="vehicle")
 

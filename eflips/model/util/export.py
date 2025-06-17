@@ -40,7 +40,7 @@ from eflips.model.network import AssocRouteStation as AssocRouteStation
 from eflips.model.network import Line as Line
 from eflips.model.network import Route as Route
 from eflips.model.network import Station as Station
-from eflips.model.schedule import Rotation as Rotation
+from eflips.model.schedule import Block as Block
 from eflips.model.schedule import StopTime as StopTime
 from eflips.model.schedule import Trip as Trip
 
@@ -56,7 +56,7 @@ ALL_CLASSES_WITH_SCENARIO_ID = [
     AssocRouteStation,
     StopTime,
     Trip,
-    Rotation,
+    Block,
     Depot,
     Plan,
     Area,

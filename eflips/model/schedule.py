@@ -95,7 +95,7 @@ class TripType(PyEnum):
 
 class Trip(Base):
     """
-    A trip is a single run of a bus on a :class:`Route`. It is part of a :class:`Rotation`.
+    A trip is a single run of a bus on a :class:`Route`. It is part of a :class:`Block`.
     """
 
     __tablename__ = "Trip"
@@ -115,12 +115,12 @@ class Trip(Base):
     route: Mapped["Route"] = relationship("Route", back_populates="trips")
     """The route."""
 
-    rotation_id: Mapped[int] = mapped_column(
-        ForeignKey("Rotation.id"), nullable=False, index=True
+    block_id: Mapped[int] = mapped_column(
+        ForeignKey("Block.id"), nullable=False, index=True
     )
-    """The unique identifier of the rotation. Foreign key to :attr:`Rotation.id`."""
-    rotation: Mapped["Rotation"] = relationship("Rotation", back_populates="trips")
-    """The rotation."""
+    """The unique identifier of the block. Foreign key to :attr:`Block.id`."""
+    block: Mapped["Block"] = relationship("Block", back_populates="trips")
+    """The block."""
 
     departure_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
@@ -168,7 +168,7 @@ class Trip(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Trip(id={self.id}, departure_time={self.departure_time}, arrival_time={self.arrival_time}, route={self.route}, rotation={self.rotation})>"
+        return f"<Trip(id={self.id}, departure_time={self.departure_time}, arrival_time={self.arrival_time}, route={self.route}, block={self.block})>"
 
 
 @event.listens_for(Trip, "before_insert")
@@ -292,19 +292,19 @@ def check_trip_before_commit(_: Any, __: Any, target: Trip) -> None:
                 ) from e
 
 
-class Rotation(Base):
+class Block(Base):
     """
-    A rotation is a sequence of trips that are performed by a bus in a single day.
+    A block is a sequence of trips that are performed by a bus in a single day.
     """
 
-    __tablename__ = "Rotation"
+    __tablename__ = "Block"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
     """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
-    scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="rotations")
+    scenario: Mapped["Scenario"] = relationship("Scenario", back_populates="blocks")
     """The scenario."""
 
     vehicle_type_id: Mapped[int] = mapped_column(
@@ -312,7 +312,7 @@ class Rotation(Base):
     )
     """The unique identifier of the vehicle type. Foreign key to :attr:`VehicleType.id`."""
     vehicle_type: Mapped["VehicleType"] = relationship(
-        "VehicleType", back_populates="rotations"
+        "VehicleType", back_populates="blocks"
     )
     """The vehicle type."""
 
@@ -320,7 +320,7 @@ class Rotation(Base):
         ForeignKey("Vehicle.id"), nullable=True, index=True
     )
     """The unique identifier of the vehicle. Foreign key to :attr:`Vehicle.id`."""
-    vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="rotations")
+    vehicle: Mapped["Vehicle"] = relationship("Vehicle", back_populates="blocks")
 
     allow_opportunity_charging: Mapped[bool] = mapped_column(Boolean, nullable=False)
     """
@@ -328,26 +328,26 @@ class Rotation(Base):
     """
 
     name: Mapped[str] = mapped_column(Text, nullable=True)
-    """The name of the rotation."""
+    """The name of the block."""
 
     trips: Mapped[List["Trip"]] = relationship(
-        "Trip", back_populates="rotation", order_by="Trip.departure_time"
+        "Trip", back_populates="block", order_by="Trip.departure_time"
     )
     """A list of trips."""
 
     def __repr__(self) -> str:
-        return f"<Rotation(id={self.id}, name={self.name})>"
+        return f"<Block(id={self.id}, name={self.name})>"
 
 
-@event.listens_for(Rotation, "before_insert")
-@event.listens_for(Rotation, "before_update")
-def check_rotation_before_commit(_: Any, __: Any, target: Rotation) -> None:
+@event.listens_for(Block, "before_insert")
+@event.listens_for(Block, "before_update")
+def check_block_before_commit(_: Any, __: Any, target: Block) -> None:
     """
-    A Rotation needs to be contiguous in time and space
+    A Block needs to be contiguous in time and space
     - the end station of a trip must be the start station of the next trip
     - the departure time of a trip must be after the arrival time of the previous trip
 
-    :param target: A Rotation object
+    :param target: A Block object
     :return: Nothing. Raises an exception if something is wrong.
     """
     for i in range(len(target.trips) - 1):
@@ -358,7 +358,7 @@ def check_rotation_before_commit(_: Any, __: Any, target: Rotation) -> None:
         ):
             warnings.warn(
                 "The end station of a trip must be the start station of the next trip. "
-                f"Rotation {target.id} violates this.",
+                f"Block {target.id} violates this.",
                 ConsistencyWarning,
             )
 
@@ -366,6 +366,6 @@ def check_rotation_before_commit(_: Any, __: Any, target: Rotation) -> None:
         if target.trips[i].arrival_time > target.trips[i + 1].departure_time:
             warnings.warn(
                 "The departure time of a trip must be after the arrival time of the previous trip. "
-                f"Rotation {target.id} violates this.",
+                f"Block {target.id} violates this.",
                 ConsistencyWarning,
             )
