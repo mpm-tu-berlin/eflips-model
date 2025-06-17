@@ -33,6 +33,11 @@ from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
 from eflips.model.schedule import Block, StopTime, Trip
 
 if TYPE_CHECKING:
+    # This makes hybrid_property's have the same typing as normal property until stubs are improved.
+    hybrid_property = property
+else:
+    from sqlalchemy.ext.hybrid import hybrid_property
+if TYPE_CHECKING:
     from eflips.model import (
         Route,
         Line,
@@ -154,8 +159,43 @@ class Scenario(Base):
     )
     """A list of trips."""
     blocks: Mapped[List["Block"]] = relationship(
-        "Block", back_populates="scenario", cascade="all, delete"
-    )
+        "Block",
+        back_populates="scenario",
+        cascade="all, delete",
+        enable_typechecks=False,
+    )  # Typecheck is disabled because of the deprecated Rotation class. Re-enable it when Rotation is removed.
+
+    @hybrid_property
+    def rotations(self) -> List["Block"]:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.blocks
+
+    @rotations.setter
+    def rotations(self, value: List["Block"]) -> None:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.blocks = value
+
+    @rotations.expression
+    def rotations(cls) -> List["Block"]:
+        """
+        This is a hybrid property that allows us to access the blocks as rotations.
+        It is used to maintain compatibility with the old code that used rotations.
+        """
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls.blocks
+
     """A list of events."""
     events: Mapped[List["Event"]] = relationship(
         "Event", back_populates="scenario", cascade="all, delete"
@@ -668,8 +708,41 @@ class VehicleType(Base):
     )
     """A list of vehicle classes."""
 
-    blocks: Mapped[List["Block"]] = relationship("Block", back_populates="vehicle_type")
+    blocks: Mapped[List["Block"]] = relationship(
+        "Block", back_populates="vehicle_type", enable_typechecks=False
+    )  # Typecheck is disabled because of the deprecated Rotation class. Re-enable it when Rotation is removed.
     """A list of blocks."""
+
+    @hybrid_property
+    def rotations(self) -> List["Block"]:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.blocks
+
+    @rotations.setter
+    def rotations(self, value: List["Block"]) -> None:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.blocks = value
+
+    @rotations.expression
+    def rotations(cls) -> List["Block"]:
+        """
+        This is a hybrid property that allows us to access the blocks as rotations.
+        It is used to maintain compatibility with the old code that used rotations.
+        """
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls.blocks
 
     events: Mapped[List["Event"]] = relationship("Event", back_populates="vehicle_type")
     """A list of events."""
@@ -778,8 +851,41 @@ class Vehicle(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the vehicle."""
 
-    blocks: Mapped[List["Block"]] = relationship("Block", back_populates="vehicle")
+    blocks: Mapped[List["Block"]] = relationship(
+        "Block", back_populates="vehicle", enable_typechecks=False
+    )  # Typecheck is disabled because of the deprecated Rotation class. Re-enable it when Rotation is removed.
     """A list of blocks this vehicle is used for."""
+
+    @hybrid_property
+    def rotations(self) -> List["Block"]:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.blocks
+
+    @rotations.setter
+    def rotations(self, value: List["Block"]) -> None:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.blocks = value
+
+    @rotations.expression
+    def rotations(cls) -> List["Block"]:
+        """
+        This is a hybrid property that allows us to access the blocks as rotations.
+        It is used to maintain compatibility with the old code that used rotations.
+        """
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls.blocks
 
     events: Mapped[List["Event"]] = relationship("Event", back_populates="vehicle")
 

@@ -1,7 +1,7 @@
 import warnings
 from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
-from typing import Any, List, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING, Union
 
 from sqlalchemy import (
     BigInteger,
@@ -17,9 +17,15 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.elements import SQLCoreOperations
 
 from eflips.model import Base, ConsistencyWarning
 
+if TYPE_CHECKING:
+    # This makes hybrid_property's have the same typing as normal property until stubs are improved.
+    hybrid_property = property
+else:
+    from sqlalchemy.ext.hybrid import hybrid_property
 if TYPE_CHECKING:
     from eflips.model import Event, Vehicle, VehicleType, Scenario, Station, Route
 
@@ -119,8 +125,65 @@ class Trip(Base):
         ForeignKey("Block.id"), nullable=False, index=True
     )
     """The unique identifier of the block. Foreign key to :attr:`Block.id`."""
-    block: Mapped["Block"] = relationship("Block", back_populates="trips")
+
+    block: Mapped["Block"] = relationship(
+        "Block", back_populates="trips", enable_typechecks=False
+    )  # Typechecks disabled during `Rotation`deprecation.
     """The block."""
+
+    @hybrid_property
+    def rotation_id(self) -> int:
+        warnings.warn(
+            "Task.rotation_id is deprecated. Use Task.block_id instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.block_id
+
+    @rotation_id.setter
+    def rotation_id(self, value: int) -> None:
+        warnings.warn(
+            "Task.rotation_id is deprecated. Use Task.block_id instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.block_id = value
+
+    @rotation_id.expression
+    def rotation_id(cls) -> SQLCoreOperations[int]:
+        warnings.warn(
+            "Task.rotation_id is deprecated. Use Task.block_id instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls.block_id  # type: ignore[return-value]
+
+    @hybrid_property
+    def rotation(self) -> Union["Block", "Rotation", None]:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.block
+
+    @rotation.setter
+    def rotation(self, value: SQLCoreOperations["Block"] | "Block") -> None:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.block = value
+
+    @rotation.expression
+    def rotation(cls) -> SQLCoreOperations["Block"]:
+        warnings.warn(
+            "Task.rotation is deprecated. Use Task.block instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls.block  # type: ignore[return-value]
 
     departure_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
@@ -337,6 +400,27 @@ class Block(Base):
 
     def __repr__(self) -> str:
         return f"<Block(id={self.id}, name={self.name})>"
+
+
+class Rotation(Block):
+    """
+    A deprecated class for a rotation. This is kept for backwards compatibility.
+    It is recommended to use :class:`Block` instead.
+    """
+
+    class Meta:
+        proxy = True
+
+    __mapper_args__ = {"polymorphic_identity": "rotation", "inherit_condition": None}
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        warnings.warn(
+            "Rotation class is deprecated. Use Block instead. "
+            "This will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
 
 @event.listens_for(Block, "before_insert")

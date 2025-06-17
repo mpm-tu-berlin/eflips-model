@@ -14,6 +14,7 @@ from eflips.model import (
     TripType,
     VehicleType,
     ConsistencyWarning,
+    Rotation,
 )
 from test_general import TestGeneral
 
@@ -538,6 +539,9 @@ class TestBlock(TestGeneral):
             allow_opportunity_charging=False,
         )
 
+        session.add(block)
+        session.flush()
+
     def test_block_invalid_geography(self, session, scenario, trips):
         # If we remove on trip from teh middle, a geographical discontinuity is created
         trip = trips.pop(1)
@@ -589,4 +593,119 @@ class TestBlock(TestGeneral):
             )
             session.add(block)
             session.commit()
+        session.rollback()
+
+
+class TestRotation(TestGeneral):
+    """
+    This should behave the same as the block tests, but give a DeprecationWarning
+    """
+
+    @pytest.fixture
+    def trips(self, session, scenario):
+        station_1 = Station(
+            name="Hauptbahnhof",
+            geom="POINT(13.304398212525141 52.4995532470573 0)",
+            scenario=scenario,
+            is_electrified=False,
+        )
+        session.add(station_1)
+        station_2 = Station(
+            name="Hauptfriedhof",
+            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            scenario=scenario,
+            is_electrified=False,
+        )
+        session.add(station_2)
+        route_1 = Route(
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            departure_station=station_1,
+            arrival_station=station_2,
+            distance=100,
+            scenario=scenario,
+        )
+        session.add(route_1)
+        route_2 = Route(
+            name="1 Hauptfriedhof -> Hauptbahnhof",
+            departure_station=station_2,
+            arrival_station=station_1,
+            distance=100,
+            scenario=scenario,
+        )
+        session.add(route_2)
+        line_1 = Line(name="1 - Hauptbahnhof <-> Hauptfriedhof", scenario=scenario)
+        line_1.routes.append(route_1)
+        session.add(line_1)
+
+        first_departure = datetime(
+            year=2020, month=1, day=1, hour=12, minute=0, second=0, tzinfo=timezone.utc
+        )
+        interval = timedelta(minutes=30)
+        duration = timedelta(minutes=20)
+        trips = []
+
+        for i in range(15):
+            # forward
+            trips.append(
+                Trip(
+                    scenario=scenario,
+                    route=route_1,
+                    trip_type=TripType.PASSENGER,
+                    departure_time=first_departure + 2 * i * interval,
+                    arrival_time=first_departure + 2 * i * interval + duration,
+                )
+            )
+
+            # backward
+            trips.append(
+                Trip(
+                    scenario=scenario,
+                    route=route_2,
+                    trip_type=TripType.PASSENGER,
+                    departure_time=first_departure + (2 * i + 1) * interval,
+                    arrival_time=first_departure + (2 * i + 1) * interval + duration,
+                )
+            )
+
+        session.add_all(trips)
+
+        return trips
+
+    def test_create_rotation(self, session, scenario, trips):
+        session.add_all(trips)
+
+        vehicle_type = VehicleType(
+            name="Bus",
+            scenario=scenario,
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=False,
+            consumption=1,
+        )
+        session.add(vehicle_type)
+
+        with pytest.deprecated_call():
+            rotation = Rotation(
+                scenario=scenario,
+                trips=trips,
+                vehicle_type=vehicle_type,
+                allow_opportunity_charging=False,
+            )
+
+        session.add(rotation)
+        session.flush()
+
+        # Try loading it as a Block
+        block = session.query(Block).filter_by(id=rotation.id).all()
+
+        assert len(block) == 1
+        assert block[0].id == rotation.id
+        assert isinstance(block[0], Block)
+
+        # Try loading it as a Rotation
+        rotation_loaded = session.query(Rotation).filter_by(id=rotation.id).all()
+        assert len(rotation_loaded) == 1
+        assert rotation_loaded[0].id == rotation.id
+        assert isinstance(rotation_loaded[0], Block)
+
         session.rollback()
