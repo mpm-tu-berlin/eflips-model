@@ -98,6 +98,11 @@ class Scenario(Base):
     manager_id: Mapped[int] = mapped_column(Integer, nullable=True)
     """The unique identifier of the manager. Only used in the `django.simba` project."""
 
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The parameters for the total cost of ownership (TCO) calculation. Stored as a JSON object."""
+
     # Most of the other columns (all except the Assoc-Tables for many-to-many relationships) have the scenario_id
     # as a foreign key. They are mapped below.
     vehicle_types: Mapped[List["VehicleType"]] = relationship(

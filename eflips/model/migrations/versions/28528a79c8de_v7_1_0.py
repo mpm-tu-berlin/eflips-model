@@ -84,6 +84,13 @@ def upgrade() -> None:
             "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
         ),
     )
+    # to scenario
+    op.add_column(
+        "Scenario",
+        sa.Column(
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+        ),
+    )
     # ### end Alembic commands ###
 
 
