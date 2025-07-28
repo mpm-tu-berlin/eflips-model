@@ -48,6 +48,12 @@ if TYPE_CHECKING:
     )
 
 
+class ScenarioType(PyEnum):
+    SOURCE = auto()
+    MUTATION = auto()
+    SIMULATION = auto()
+
+
 class Scenario(Base):
     __tablename__ = "Scenario"
 
@@ -64,6 +70,13 @@ class Scenario(Base):
         "Scenario", back_populates="parent"
     )
     """A list of child scenarios."""
+
+    scenario_type: Mapped[ScenarioType] = mapped_column(
+        SqlEnum(ScenarioType, native_enum=False), nullable=True
+    )
+    """
+    The type of Scenario. Used by django-simba.
+    """
 
     name: Mapped[str] = mapped_column(Text)
     """A name for the scenario."""
