@@ -82,7 +82,7 @@ def downgrade() -> None:
     op.drop_column("Station", "charging_point_type_id")
     op.drop_column("Scenario", "tco_parameters")
     op.drop_column("BatteryType", "tco_parameters")
-    op.drop_constraint(None, "Area", type_="foreignkey")
+    op.drop_constraint(None, "Area", type_="foreignkey")  # type: ignore
     op.drop_column("Area", "charging_point_type_id")
     op.drop_table("ChargingPointType")
     # ### end Alembic commands ###
