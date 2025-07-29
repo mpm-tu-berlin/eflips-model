@@ -111,6 +111,11 @@ class Scenario(Base):
     manager_id: Mapped[int] = mapped_column(Integer, nullable=True)
     """The unique identifier of the manager. Only used in the `django.simba` project."""
 
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The parameters for the total cost of ownership (TCO) calculation. Stored as a JSON object."""
+
     # Most of the other columns (all except the Assoc-Tables for many-to-many relationships) have the scenario_id
     # as a foreign key. They are mapped below.
     vehicle_types: Mapped[List["VehicleType"]] = relationship(
@@ -188,6 +193,10 @@ class Scenario(Base):
     assoc_plan_processes: Mapped[List["AssocPlanProcess"]] = relationship(
         "AssocPlanProcess", back_populates="scenario", cascade="all, delete"
     )
+    charging_point_types: Mapped[List["ChargingPointType"]] = relationship(
+        "ChargingPointType", back_populates="scenario", cascade="all, delete"
+    )
+    """A list of charging point types."""
 
     @staticmethod
     def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> None:
@@ -336,6 +345,12 @@ class Scenario(Base):
                 self._copy_object(assoc_plan_process, session, scenario_copy)
                 assoc_plan_process_id_map[original_id] = assoc_plan_process
 
+            charging_point_type_id_map: Dict[int, "ChargingPointType"] = {}
+            for charging_point_type in self.charging_point_types:
+                original_id = charging_point_type.id
+                self._copy_object(charging_point_type, session, scenario_copy)
+                charging_point_type_id_map[original_id] = charging_point_type
+
         # This assigns the new ids
         session.flush()
 
@@ -395,6 +410,13 @@ class Scenario(Base):
         for stop_time in scenario_copy.stop_times:
             stop_time.station_id = station_id_map[stop_time.station_id].id
             stop_time.trip_id = trip_id_map[stop_time.trip_id].id
+
+        # Station <-> ChargingPointType
+        for station in scenario_copy.stations:
+            if station.charging_point_type_id is not None:
+                station.charging_point_type_id = charging_point_type_id_map[
+                    station.charging_point_type_id
+                ].id
 
         # Trip <-> Route
         for trip in scenario_copy.trips:
@@ -460,6 +482,12 @@ class Scenario(Base):
                 if area.vehicle_type_id is not None
                 else None
             )
+        # Area <-> ChargingPointType
+        for area in scenario_copy.areas:
+            if area.charging_point_type_id is not None:
+                area.charging_point_type_id = charging_point_type_id_map[
+                    area.charging_point_type_id
+                ].id
 
         # Process <-> Area is a many-to-many relationship, so we need to update the association table
         for area_process_entry in session.query(AssocAreaProcess):
@@ -648,6 +676,12 @@ class VehicleType(Base):
     allowed_mass_constraint = CheckConstraint("allowed_mass > 0")
     _table_args_list.append(allowed_mass_constraint)
 
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The TCO parameters of the vehicle type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
+    Stored as a JSON object."""
+
     consumption: Mapped[float] = mapped_column(Float, nullable=True)
     """
     The vehicle's energy consumption in kWh/km. This is used to calculate the energy consumption of a trip. Can
@@ -745,6 +779,12 @@ class BatteryType(Base):
 
     chemistry: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSONB)
     """The chemistry of the battery. Stored as a JSON object, defined by eflips-LCA"""
+
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The TCO parameters of the battery type. It should contain at least "procurement_per_kWh", "lifetime" and "price_escalation_factor". 
+    Stored as a JSON object."""
 
     def __repr__(self) -> str:
         return f"<BatteryType (id={self.id}, specific_mass={self.specific_mass}, chemistry={self.chemistry})>"
@@ -1352,3 +1392,50 @@ class Temperatures(Base):
     The temperatures in degrees Celsius. The order of the temperatures should match the order of the datetimes.
     The length of this list should be the same as the length of the datetimes.
     """
+
+
+class ChargingPointType(Base):
+
+    """
+    This class is designed for distinguishing between charging point at area or at station.
+    """
+
+    __tablename__ = "ChargingPointType"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    """The unique identifier of the charging point type. Auto-incremented."""
+
+    scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
+    """The unique identifier of the scenario. Foreign key to :attr:`Scenario.id`."""
+    scenario: Mapped["Scenario"] = relationship(
+        "Scenario", back_populates="charging_point_types"
+    )
+    """The scenario."""
+
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    """The name of the charging point type. """
+    name_short: Mapped[str] = mapped_column(Text, nullable=True)
+    """The short name of the charging point type (if available)."""
+
+    tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB, nullable=True
+    )
+    """The TCO parameters of the charging point type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
+    Stored as a JSON object."""
+
+    stations: Mapped[List["Station"]] = relationship(
+        "Station",
+        back_populates="charging_point_type",
+    )
+
+    """The stations that have this charging point type."""
+
+    areas: Mapped[List["Area"]] = relationship(
+        "Area",
+        back_populates="charging_point_type",
+    )
+
+    """The areas that have this charging point type."""
+
+    def __repr__(self) -> str:
+        return f"<ChargingPointType(id={self.id}, name={self.name})>"
