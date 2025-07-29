@@ -27,7 +27,7 @@ def upgrade() -> None:
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("name_short", sa.Text(), nullable=True),
         sa.Column(
-            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True  # type: ignore
         ),
         sa.ForeignKeyConstraint(
             ["scenario_id"],
@@ -44,13 +44,13 @@ def upgrade() -> None:
     op.add_column(
         "BatteryType",
         sa.Column(
-            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True # type: ignore
         ),
     )
     op.add_column(
         "Scenario",
         sa.Column(
-            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True # type: ignore
         ),
     )
     op.add_column(
@@ -59,7 +59,7 @@ def upgrade() -> None:
     op.add_column(
         "Station",
         sa.Column(
-            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True # type: ignore
         ),
     )
     op.create_foreign_key(
@@ -68,7 +68,7 @@ def upgrade() -> None:
     op.add_column(
         "VehicleType",
         sa.Column(
-            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True
+            "tco_parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True # type: ignore
         ),
     )
     # ### end Alembic commands ###
