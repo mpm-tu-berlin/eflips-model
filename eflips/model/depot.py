@@ -24,10 +24,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from eflips.model import Base, ChargingPointType
+from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, VehicleType, Event, Station
+    from eflips.model import Scenario, VehicleType, Event, Station, ChargingPointType
 
 
 class Depot(Base):
@@ -586,7 +586,7 @@ class Area(Base):
         ForeignKey("ChargingPointType.id"), nullable=True
     )
 
-    charging_point_type: Mapped[ChargingPointType] = relationship(
+    charging_point_type: Mapped["ChargingPointType"] = relationship(
         "ChargingPointType", back_populates="areas"
     )
     """The type of charging point in this area."""

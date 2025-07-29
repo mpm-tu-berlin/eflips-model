@@ -16,10 +16,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects import postgresql
 
-from eflips.model import Base, ChargingPointType
+from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, Trip, StopTime, Event, Depot
+    from eflips.model import Scenario, Trip, StopTime, Event, Depot, ChargingPointType
 
 
 class Line(Base):
@@ -326,7 +326,7 @@ class Station(Base):
     )
     """The unique identifier of the charging point type. Foreign key to :attr:`ChargingPointType.id`"""
 
-    charging_point_type: Mapped[ChargingPointType] = relationship(
+    charging_point_type: Mapped["ChargingPointType"] = relationship(
         "ChargingPointType", back_populates="stations"
     )
     """The charging point type. This is used to represent the different types of charging points installed at stations or areas. It is mainly relevant for TCO calculations."""
