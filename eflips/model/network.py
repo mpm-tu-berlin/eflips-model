@@ -15,6 +15,7 @@ from sqlalchemy import (
     Integer,
     Text,
     func,
+    JSON,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects import postgresql
@@ -459,7 +460,7 @@ class Station(Base):
     """The charging point type. This is used to represent the different types of charging points installed at stations or areas. It is mainly relevant for TCO calculations."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True  # type: ignore
     )
     """The TCO parameters of the vehicle type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
     Stored as a JSON object."""

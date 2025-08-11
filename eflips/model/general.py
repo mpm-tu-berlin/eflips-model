@@ -131,7 +131,7 @@ class Scenario(Base):
     """The unique identifier of the manager. Only used in the `django.simba` project."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True  # type: ignore
     )
     """The parameters for the total cost of ownership (TCO) calculation. Stored as a JSON object."""
 
@@ -734,7 +734,7 @@ class VehicleType(Base):
     _table_args_list.append(allowed_mass_constraint)
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True  # type: ignore
     )
     """The TCO parameters of the vehicle type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
     Stored as a JSON object."""
@@ -873,7 +873,7 @@ class BatteryType(Base):
     """The chemistry of the battery. Stored as a JSON object, defined by eflips-LCA"""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True  # type: ignore
     )
     """The TCO parameters of the battery type. It should contain at least "procurement_per_kWh", "lifetime" and "price_escalation_factor". 
     Stored as a JSON object."""
@@ -1573,7 +1573,9 @@ class ChargingPointType(Base):
 
     __tablename__ = "ChargingPointType"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the charging point type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -1589,7 +1591,7 @@ class ChargingPointType(Base):
     """The short name of the charging point type (if available)."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True  # type: ignore
     )
     """The TCO parameters of the charging point type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
     Stored as a JSON object."""
