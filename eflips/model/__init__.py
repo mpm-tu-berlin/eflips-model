@@ -44,7 +44,7 @@ class TimeStampWithTz(sqlalchemy.types.TypeDecorator):  # type: ignore
             )
 
         # Convert to UTC before and remove the timezone info (implicit UTC)
-        value_no_tz = value.astimezone(datetime.UTC).replace(tzinfo=None)
+        value_no_tz = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
         return value_no_tz
 
     def process_result_value(
@@ -62,7 +62,7 @@ class TimeStampWithTz(sqlalchemy.types.TypeDecorator):  # type: ignore
                 "We expect the database to store the value without timezone information."
             )
 
-        value_with_tz = value.replace(tzinfo=datetime.UTC)
+        value_with_tz = value.replace(tzinfo=datetime.timezone.utc)
 
         local_timezone = (
             datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
