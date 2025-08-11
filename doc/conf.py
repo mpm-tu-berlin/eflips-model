@@ -9,7 +9,7 @@
 project = "eflips-model"
 copyright = "2024, Technische Universität Berlin"
 author = "Ludger Heide"
-release = "9.0.0-alpha1"
+release = "10.0.0-alpha1"
 
 
 # -- General configuration ---------------------------------------------------
