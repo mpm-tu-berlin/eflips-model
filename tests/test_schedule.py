@@ -546,7 +546,7 @@ class TestBlock(TestGeneral):
         session.flush()
 
     def test_block_invalid_geography(self, session, scenario, trips):
-        # If we remove on trip from teh middle, a geographical discontinuity is created
+        # If we remove one trip from the middle, a geographical discontinuity is created
         trip = trips.pop(1)
         session.expunge(trip)
         session.add_all(trips)
