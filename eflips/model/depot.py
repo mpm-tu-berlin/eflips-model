@@ -29,7 +29,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from eflips.model import Base
 
 if TYPE_CHECKING:
-    from eflips.model import Scenario, VehicleType, Event, Station
+    from eflips.model import Scenario, VehicleType, Event, Station, ChargingPointType
 
 
 class Depot(Base):
@@ -589,6 +589,15 @@ class Area(Base):
 
     row_count: Mapped[int] = mapped_column(Integer, nullable=True)
     """Number of side-by-side rows in a LINE area. Must be set for areas of type LINE."""
+
+    charging_point_type_id: Mapped[int] = mapped_column(
+        ForeignKey("ChargingPointType.id"), nullable=True
+    )
+
+    charging_point_type: Mapped["ChargingPointType"] = relationship(
+        "ChargingPointType", back_populates="areas"
+    )
+    """The type of charging point in this area."""
 
     bounding_box = mapped_column(Geometry("POLYGON", srid=4326), nullable=True)
     """The bounding box of the area as a PostGIS Polygon. Uses WGS84 coordinate system (SRID 4326)."""

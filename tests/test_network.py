@@ -19,6 +19,7 @@ from eflips.model import (
     TripType,
     VehicleType,
     VoltageLevel,
+    ChargingPointType,
 )
 from test_general import TestGeneral
 import shapely.wkt
@@ -542,8 +543,26 @@ class TestStation(TestGeneral):
             power_total=44,
             charge_type=ChargeType.DEPOT,
             voltage_level=VoltageLevel.LV,
+            tco_parameters={
+                "procurement": 500000.0,
+                "lifetime": 20,
+                "cost_escalation": 0.02,
+            },
         )
         session.add(station)
+
+        charging_point_type = ChargingPointType(
+            scenario=scenario,
+            name="Hauptbahnhof",
+            tco_parameters={
+                "procurement": 500000.0,
+                "lifetime": 20,
+                "cost_escalation": 0.02,
+            },
+        )
+        session.add(charging_point_type)
+        station.charging_point_type = charging_point_type
+
         session.commit()
 
         session.expire(station)
