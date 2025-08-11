@@ -557,7 +557,7 @@ def fixup_geometry_for_spatialite_station(
                     target.geom = target.geom.replace("POINTZ", "POINT")  # type: ignore
                 else:
                     raise ValueError(
-                        "The geometry of the route must be a POINT Z or POINTZ."
+                        "The geometry of the station must be a POINT Z or POINTZ."
                     )
                 target.geom = "SRID=4326;" + target.geom  # type: ignore
             elif isinstance(target.geom, WKBElement):
