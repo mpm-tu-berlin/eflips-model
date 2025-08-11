@@ -1,7 +1,9 @@
+import os
 from enum import auto, Enum as PyEnum
 from typing import Any, List, TYPE_CHECKING
 
-from geoalchemy2 import Geometry
+import sqlalchemy.orm.session
+from geoalchemy2 import Geometry, WKBElement
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -12,6 +14,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Text,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,7 +33,9 @@ class Line(Base):
 
     __tablename__ = "Line"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -60,7 +65,9 @@ class Route(Base):
 
     __tablename__ = "Route"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -105,13 +112,34 @@ class Route(Base):
     distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The length of the route in meters."""
 
-    geom: Mapped[Geometry] = mapped_column(
-        Geometry("LINESTRINGZ", srid=4326), nullable=True
-    )
-    """
-    The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
-    Use WGS84 coordinates (EPSG:4326).
-    """
+    # Depending on the DATABASE_URL environment variable, the geometry type may be POINT or POINT Z.
+    if "DATABASE_URL" not in os.environ:
+        raise ValueError(
+            "DATABASE_URL environment variable must be set to use this model."
+        )
+    geom: Mapped[Geometry]
+    if "postgres" in os.environ["DATABASE_URL"]:
+        # Postgres uses POINT Z
+        geom = mapped_column(
+            Geometry("LINESTRINGZ", srid=4326, dimension=3), nullable=True
+        )
+        """
+        The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
+        Use WGS84 coordinates (EPSG:4326).
+        """
+    elif "sqlite" in os.environ["DATABASE_URL"]:
+        # SpatiaLite uses POINT
+        geom = mapped_column(
+            Geometry("LINESTRING", srid=4326, dimension=3), nullable=True
+        )
+        """
+        The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
+        Use WGS84 coordinates (EPSG:4326).
+        """
+    else:
+        raise ValueError(
+            "DATABASE_URL environment variable must be set to a valid Postgres or SQLite URL."
+        )
 
     trips: Mapped[List["Trip"]] = relationship("Trip", back_populates="route")
     """The trips."""
@@ -142,6 +170,87 @@ class Route(Base):
 
     def __repr__(self) -> str:
         return f"<Route(id={self.id}, name={self.name})>"
+
+    @staticmethod
+    def calculate_length(
+        session: sqlalchemy.orm.session.Session, linestring: str
+    ) -> float:
+        """
+        Portable function to calculate the length of a linestring in meters. It adapts to whether the database uses
+        PostGIS or SpatiaLite.
+
+        :param session: An open SQLAlchemy session.
+        :param linestring: A string representation of a linestring in WKT format.
+        :return: The length of the linestring in meters.
+        """
+        if session.bind is None or session.bind.dialect is None:
+            raise ValueError("Session is not bound to a database.")
+        if session.bind.dialect.name == "postgresql":
+            # PostGIS
+            distance = session.query(
+                func.ST_Length(func.ST_GeomFromText(linestring, 4326), True)
+            ).scalar()
+            if distance is None:
+                raise ValueError("Failed to calculate length of linestring.")
+            assert isinstance(distance, float), "Distance should be a float."
+            return distance
+        elif session.bind.dialect.name == "sqlite":
+            # SpatiaLite
+            # The linestring must be in WKT format, and be a "LINESTRINGZ" or "LINESTRING Z"
+            if "LINESTRING Z" not in linestring and "LINESTRINGZ" not in linestring:
+                raise ValueError(
+                    "The linestring must be in WKT format and be a 'LINESTRING Z' or 'LINESTRINGZ'."
+                )
+            distance = session.query(
+                func.GeodesicLength(func.ST_GeomFromText(linestring, 4326))
+            ).scalar()
+            if distance is None:
+                raise ValueError("Failed to calculate length of linestring.")
+            assert isinstance(distance, float), "Distance should be a float."
+            return distance
+        else:
+            raise NotImplementedError(
+                f"Length calculation not implemented for dialect {session.bind.dialect.name}"
+            )
+
+
+@event.listens_for(Route, "before_insert")
+@event.listens_for(Route, "before_update")
+def fixup_geometry_for_spatialite_route(
+    _: Any, con: sqlalchemy.engine.base.Connection, target: Route
+) -> None:
+    """
+    SpatiaLite - GEoAlchemy is quite broken. It supports 3D geometries just fine, but they must be called "LINESTRING"
+    as WKT type, not "LINESTRING Z". This function fixes the geometry before inserting it into the database.
+    :param _:
+    :param con:
+    :param target:
+    :return: Nothing. The geometry of the route is fixed in place.
+    """
+    if con.dialect.name == "sqlite":
+        # SpatiaLite
+        # We need to change "LINESTRING Z" to "LINESTRING" for SpatiaLite to work correctly with 3D geometries
+        if target.geom is not None:
+            if isinstance(target.geom, str):
+                if "SRID=4326;" in target.geom:
+                    # The geometry has already been fixed up, so we don't need to do anything
+                    return
+                if "LINESTRING Z" in target.geom:
+                    target.geom = target.geom.replace("LINESTRING Z", "LINESTRING")  # type: ignore
+                elif "LINESTRINGZ" in target.geom:
+                    target.geom = target.geom.replace("LINESTRINGZ", "LINESTRING")  # type: ignore
+                else:
+                    raise ValueError(
+                        "The geometry of the route must be a LINESTRING Z or LINESTRINGZ."
+                    )
+                target.geom = "SRID=4326;" + target.geom  # type: ignore
+            elif isinstance(target.geom, WKBElement):
+                # The geometry is already in WKB format, so we don't need to do anything
+                return
+            else:
+                raise ValueError(
+                    "The geometry of the route must be a string representation of a LINESTRING Z or LINESTRING."
+                )
 
 
 @event.listens_for(Route, "before_insert")
@@ -257,7 +366,9 @@ class Station(Base):
 
     __tablename__ = "Station"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -270,8 +381,24 @@ class Station(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """The short name of the station (if available)."""
 
-    geom: Mapped[Geometry] = mapped_column(Geometry("POINTZ", srid=4326), nullable=True)
-    """The (optional) location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
+    # Depending on the DATABASE_URL environment variable, the geometry type may be POINT or POINT Z.
+    if "DATABASE_URL" not in os.environ:
+        raise ValueError(
+            "DATABASE_URL environment variable must be set to use this model."
+        )
+    geom: Mapped[Geometry]
+    if "postgres" in os.environ["DATABASE_URL"]:
+        # Postgres uses POINT Z
+        geom = mapped_column(Geometry("POINTZ", srid=4326, dimension=3), nullable=True)
+        """The (optional) location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
+    elif "sqlite" in os.environ["DATABASE_URL"]:
+        # SpatiaLite uses POINT
+        geom = mapped_column(Geometry("POINT", srid=4326, dimension=3), nullable=True)
+        """The (optional) location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
+    else:
+        raise ValueError(
+            "DATABASE_URL environment variable must be set to a valid Postgres or SQLite URL."
+        )
 
     is_electrified = mapped_column(Boolean, nullable=False)
     """
@@ -385,6 +512,45 @@ class Station(Base):
         return f"<Station(id={self.id}, name={self.name}, is_electrified={self.is_electrified})>"
 
 
+@event.listens_for(Station, "before_insert")
+@event.listens_for(Station, "before_update")
+def fixup_geometry_for_spatialite_station(
+    _: Any, con: sqlalchemy.engine.base.Connection, target: Station
+) -> None:
+    """
+    SpatiaLite - GEoAlchemy is quite broken. It supports 3D geometries just fine, but they must be called "LINESTRING"
+    as WKT type, not "LINESTRING Z". This function fixes the geometry before inserting it into the database.
+    :param _:
+    :param con:
+    :param target:
+    :return: Nothing. The geometry of the route is fixed in place.
+    """
+    if con.dialect.name == "sqlite":
+        # SpatiaLite
+        # We need to change "POINT Z" to "POINT" for SpatiaLite to work correctly with 3D geometries
+        if target.geom is not None:
+            if isinstance(target.geom, str):
+                if "SRID=4326;" in target.geom:
+                    # The geometry has already been fixed up, so we don't need to do anything
+                    return
+                if "POINT Z" in target.geom:
+                    target.geom = target.geom.replace("POINT Z", "POINT")  # type: ignore
+                elif "POINTZ" in target.geom:
+                    target.geom = target.geom.replace("POINTZ", "POINT")  # type: ignore
+                else:
+                    raise ValueError(
+                        "The geometry of the route must be a POINT Z or POINTZ."
+                    )
+                target.geom = "SRID=4326;" + target.geom  # type: ignore
+            elif isinstance(target.geom, WKBElement):
+                # The geometry is already in WKB format, so we don't need to do anything
+                return
+            else:
+                raise ValueError(
+                    "The geometry of the route must be a string representation of a LINESTRING Z or LINESTRING."
+                )
+
+
 class AssocRouteStation(Base):
     """
     An association table between :class:`Route` and :class:`Station`. It is used to represent the stops on a route.
@@ -392,7 +558,9 @@ class AssocRouteStation(Base):
 
     __tablename__ = "AssocRouteStation"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the association. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -414,10 +582,28 @@ class AssocRouteStation(Base):
     )
     """The station."""
 
-    location: Mapped[Geometry] = mapped_column(
-        Geometry("POINTZ", srid=4326), nullable=True
-    )
-    """An optional precise location of the this route's stop at the station. Use WGS84 coordinates (EPSG:4326)."""
+    # Depending on the DATABASE_URL environment variable, the geometry type may be POINT or POINT Z.
+    if "DATABASE_URL" not in os.environ:
+        raise ValueError(
+            "DATABASE_URL environment variable must be set to use this model."
+        )
+    location: Mapped[Geometry]
+    if "postgres" in os.environ["DATABASE_URL"]:
+        # Postgres uses POINT Z
+        location = mapped_column(
+            Geometry("POINTZ", srid=4326, dimension=3), nullable=True
+        )
+        """An optional precise location of the this route's stop at the station. Use WGS84 coordinates (EPSG:4326)."""
+    elif "sqlite" in os.environ["DATABASE_URL"]:
+        # SpatiaLite uses POINT
+        location = mapped_column(
+            Geometry("POINT", srid=4326, dimension=3), nullable=True
+        )
+        """An optional precise location of the this route's stop at the station. Use WGS84 coordinates (EPSG:4326)."""
+    else:
+        raise ValueError(
+            "DATABASE_URL environment variable must be set to a valid Postgres or SQLite URL."
+        )
 
     elapsed_distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The distance in m that the bus has traveled when it reached this stop."""

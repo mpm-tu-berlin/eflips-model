@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 import eflips.model
 from eflips.model import Base
 from eflips.model.util.export import (
-    ALL_TABLE_CLASSES,
     start_counting_foreign_keys_at,
     get_or_update_max_sequence_number,
 )

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from enum import auto, Enum as PyEnum
 from math import sin, cos, sqrt, radians, degrees, atan2
-from typing import List, Tuple, TYPE_CHECKING, Optional, Dict
+from typing import List, Tuple, TYPE_CHECKING, Optional, Dict, Any
 
 import geoalchemy2.shape as ga_shape
 from geoalchemy2 import Geometry
@@ -20,6 +20,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Constraint,
+    JSON,
+    event,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,7 +39,9 @@ class Depot(Base):
     """
 
     __tablename__ = "Depot"
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique idenfitier of the depot. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -484,7 +488,9 @@ class Plan(Base):
 
     __tablename__ = "Plan"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the plan. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -545,7 +551,9 @@ class Area(Base):
 
     _table_args_list: List[Constraint] = []
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the area. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -1184,7 +1192,9 @@ class Process(Base):
 
     _table_args_list: List[Constraint] = []
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the process. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -1209,7 +1219,7 @@ class Process(Base):
     charging equipment to be provided."""
 
     availability: Mapped[List[Tuple[datetime, datetime]]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        JSON().with_variant(postgresql.JSONB(), "postgresql"), nullable=True  # type: ignore
     )
     """Temporal availability of this process represented by a list of start and end times. Null means this process is 
     always available."""
@@ -1231,21 +1241,26 @@ class Process(Base):
         "AssocAreaProcess", viewonly=True
     )
 
-    # This constraint verifies that the process actually does something
-    _table_args_list.append(
-        CheckConstraint(
-            "(duration IS NULL) OR"
-            "(duration IS NOT NULL AND duration >= '00:00:00') OR"
-            "(electric_power IS NULL) OR"
-            "(electric_power IS NOT NULL AND electric_power >= 0)",
-            name="positive_duration_and_power_check",
-        )
-    )
-
     __table_args__ = tuple(_table_args_list)
 
     def __repr__(self) -> str:
         return f"<Process(id={self.id}, name={self.name}, duration={self.duration}, electric_power={self.electric_power})>"
+
+
+@event.listens_for(Process, "before_insert")
+@event.listens_for(Process, "before_update")
+def validate_duration_and_power(_: Any, __: Any, target: Process) -> None:
+    """
+    Validates the duration and electric power of a Process before inserting or updating it in the database.
+    :param _: Unused parameter, typically the mapper or class being listened to.
+    :param __: Unused parameter, typically the instance being inserted or updated.
+    :param target:  The Process instance being validated.
+    :return: None. Raises ValueError if validation fails.
+    """
+    if target.duration is not None and target.duration < timedelta(0):
+        raise ValueError("Duration must be non-negative")
+    if target.electric_power is not None and target.electric_power < 0:
+        raise ValueError("Electric power must be non-negative")
 
 
 class AssocPlanProcess(Base):
@@ -1253,7 +1268,9 @@ class AssocPlanProcess(Base):
 
     __tablename__ = "AssocPlanProcess"
 
-    id = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the association. Auto-incremented. Needed for django."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -1285,7 +1302,9 @@ class AssocAreaProcess(Base):
 
     __tablename__ = "AssocAreaProcess"
 
-    id = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the association. Auto-incremented. Needed for django."""
 
     area_id: Mapped[int] = mapped_column(ForeignKey("Area.id"))

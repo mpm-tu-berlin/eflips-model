@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pytest
 import sqlalchemy
-from sqlalchemy import create_engine
+from eflips.model import create_engine
 from sqlalchemy.orm import Session
 
 from eflips.model import (
@@ -41,6 +41,18 @@ from eflips.model.general import (
 
 
 class TestGeneral:
+    @staticmethod
+    def wkt_for_coordinates(x, y, z=0):
+        """
+        Creates a WKT representation of a point with the given coordinates, in the slightly wrong
+        "POINT(X Y Z)" format, which is used vby Spatialite.
+        :param x: The x coordinate
+        :param y: The y coordinate
+        :param z: The z coordinate (default is 0)
+        :return: A WKT representation of the point
+        """
+        return f"POINT Z({x} {y} {z})"
+
     @pytest.fixture()
     def scenario(self, session):
         """
@@ -154,7 +166,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=self.wkt_for_coordinates(0, 0, 0),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -163,7 +175,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom="POINT(1 0 0)",
+            geom=self.wkt_for_coordinates(1, 0, 0),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -172,7 +184,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom="POINT(2 0 0)",
+            geom=self.wkt_for_coordinates(2, 0, 0),
             is_electrified=False,
         )
 
@@ -372,11 +384,17 @@ class TestGeneral:
         engine = create_engine(
             url, echo=False
         )  # Change echo to True to see SQL queries
+
         Base.metadata.drop_all(engine)
         setup_database(engine)
         session = Session(bind=engine)
         yield session
         session.close()
+
+    @pytest.fixture
+    def skip_if_sqlite(self, session):
+        if session.bind.dialect.name == "sqlite":
+            pytest.skip("Test not compatible with SQLite")
 
 
 class TestScenario(TestGeneral):
@@ -971,7 +989,9 @@ class TestEvent(TestGeneral):
         session.add(event_2)
         session.commit()
 
-    def test_create_truly_overlapping_events(self, session, sample_content):
+    def test_create_truly_overlapping_events(
+        self, session, sample_content, skip_if_sqlite
+    ):
         # Creating an event which ends after the next event starts should not be allowed
         event_1 = Event(
             scenario=session.query(Scenario).first(),
@@ -1041,7 +1061,7 @@ class TestEvent(TestGeneral):
             session.commit()
         session.rollback()
 
-    def test_create_overlapping_events(self, session, sample_content):
+    def test_create_overlapping_events(self, session, sample_content, skip_if_sqlite):
         # Creating an event with its start time being exactly the same as the end time of another event should not be allowed
         event_1 = Event(
             scenario=session.query(Scenario).first(),
@@ -1532,7 +1552,7 @@ class TestTemperatures(TestGeneral):
         # Check that dates span multiple days
         assert temperatures.datetimes[0].date() != temperatures.datetimes[1].date()
 
-    def test_mismatched_array_lengths(self, session, scenario):
+    def test_mismatched_array_lengths(self, session, scenario, skip_if_sqlite):
         # Attempt to create a Temperatures object with mismatched array lengths
         # This should now raise an IntegrityError due to the CheckConstraint
         temperatures = Temperatures(

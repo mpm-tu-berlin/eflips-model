@@ -1,5 +1,7 @@
 import pickle
 
+import pytest
+
 from eflips.model import Base
 from eflips.model.util.export import (
     extract_scenario,
@@ -14,6 +16,13 @@ class TestExport(TestGeneral):
         scenario_ids = [scenario.id]
 
         all_objects = []
+
+        if session.bind.dialect.name == "sqlite":
+            with pytest.raises(ValueError):
+                for scenario_id in scenario_ids:
+                    all_objects.extend(extract_scenario(scenario_id, session))
+            return
+
         for scenario_id in scenario_ids:
             all_objects.extend(extract_scenario(scenario_id, session))
 

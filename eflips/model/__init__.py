@@ -1,11 +1,74 @@
+import datetime
 import importlib
+from typing import Any
 
 import sqlalchemy
+from geoalchemy2 import load_spatialite
+from sqlalchemy.event import listen
 from sqlalchemy.orm import DeclarativeBase
+
+
+def create_engine(url: str, **kwargs) -> sqlalchemy.Engine:  # type: ignore
+    """
+    Create a SQLAlchemy engine with the given URL and options. This is an overridden version of the
+    `sqlalchemy.create_engine` function that loads the Spatialite extension if sqlite is used.
+
+    :param url: The database URL to connect to.
+    :param kwargs: Additional keyword arguments for the engine creation.
+    :return: A SQLAlchemy engine instance.
+    """
+    engine = sqlalchemy.create_engine(url, **kwargs)
+    if url.startswith("sqlite://"):
+        listen(engine, "connect", load_spatialite)
+    return engine
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class TimeStampWithTz(sqlalchemy.types.TypeDecorator):  # type: ignore
+    impl = sqlalchemy.types.DateTime
+
+    def process_bind_param(self, value: datetime.datetime, dialect: Any) -> datetime.datetime | None:  # type: ignore
+        if value is None:
+            return None
+
+        # Ensure the value is a datetime object
+        if not isinstance(value, datetime.datetime):
+            raise ValueError(f"Expected a datetime object, got {type(value)} instead.")
+
+        if value.tzinfo is None:
+            raise ValueError(
+                "The value must be timezone-aware. Please use a timezone-aware datetime object."
+            )
+
+        # Convert to UTC before and remove the timezone info (implicit UTC)
+        value_no_tz = value.astimezone(datetime.UTC).replace(tzinfo=None)
+        return value_no_tz
+
+    def process_result_value(
+        self, value: datetime.datetime | None, dialect: Any
+    ) -> datetime.datetime | None:
+        if value is None:
+            return None
+
+        # The value was implicit UTC. Make it explicit localtime.
+        if not isinstance(value, datetime.datetime):
+            raise ValueError(f"Expected a datetime object, got {type(value)} instead.")
+
+        if value.tzinfo is not None:
+            raise ValueError(
+                "We expect the database to store the value without timezone information."
+            )
+
+        value_with_tz = value.replace(tzinfo=datetime.UTC)
+
+        local_timezone = (
+            datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+        )
+
+        return value_with_tz.astimezone(local_timezone)
 
 
 class ConsistencyWarning(UserWarning):

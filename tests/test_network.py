@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
 
+import geoalchemy2
 import pytest
 import sqlalchemy
-from sqlalchemy import func
+from geoalchemy2 import WKTElement, Geometry
+from geoalchemy2.shape import from_shape, to_shape
+from sqlalchemy import func, text
 
 from eflips.model import (
     AssocRouteStation,
@@ -18,6 +21,7 @@ from eflips.model import (
     VoltageLevel,
 )
 from test_general import TestGeneral
+import shapely.wkt
 
 
 class TestLine(TestGeneral):
@@ -33,14 +37,14 @@ class TestRoute(TestGeneral):
         """Create two stations for testing."""
         station_1 = Station(
             name="Hauptbahnhof",
-            geom="POINT(13.304398212525141 52.4995532470573 0)",
+            geom=self.wkt_for_coordinates(1, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(2, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
@@ -93,6 +97,7 @@ class TestRoute(TestGeneral):
         # Create a shape
         shape = "LINESTRINGZ(13.304398212525141 52.4995532470573 0,13.328859958740962 52.50315841433728 0)"
 
+        session.commit()
         route = Route(
             name="1 Hauptbahnhof -> Hauptfriedhof",
             name_short="1A",
@@ -100,15 +105,20 @@ class TestRoute(TestGeneral):
             departure_station=stations[0],
             arrival_station=stations[1],
             line=line,
-            distance=0,
+            distance=Route.calculate_length(session, shape),
             geom=shape,
             scenario=scenario,
         )
-        session.add(route)
 
-        # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
+        session.add(route)
         session.commit()
+
+        # Check if the route was created correctly
+        session.expire(route)
+
+        # Assert that the geometry is correct
+        from_db = to_shape(route.geom)
+        assert from_db is not None
 
     def test_create_route_invalid_distance(self, session, scenario, stations):
         session.add_all(stations)
@@ -155,7 +165,8 @@ class TestRoute(TestGeneral):
         session.rollback()
 
         # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
+        route.distance = Route.calculate_length(session, shape)
+        assert route.distance > 0
         session.add(route)
         session.commit()
 
@@ -307,7 +318,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(1, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
@@ -339,7 +350,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(2, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
@@ -454,12 +465,10 @@ class TestRoute(TestGeneral):
 
 class TestStation(TestGeneral):
     def test_create_station(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573 0)"
-
         # Create a simple station
         station = Station(
             name="Hauptbahnhof",
-            geom=geom,
+            geom=self.wkt_for_coordinates(1, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
@@ -467,12 +476,11 @@ class TestStation(TestGeneral):
         session.commit()
 
     def test_create_station_invalid_electrification(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573 0)"
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                geom=geom,
+                geom=self.wkt_for_coordinates(1, 0, 0),
                 scenario=scenario,
                 is_electrified=True,
             )
@@ -483,7 +491,7 @@ class TestStation(TestGeneral):
             # Create a simple station
             station = Station(
                 name="Hauptbahnhof",
-                geom=geom,
+                geom=self.wkt_for_coordinates(1, 0, 0),
                 scenario=scenario,
                 is_electrified=False,
                 power_total=100,
@@ -492,26 +500,41 @@ class TestStation(TestGeneral):
             session.commit()
 
     def test_create_station_invalid_geom(self, session, scenario):
-        with pytest.raises(sqlalchemy.exc.InternalError):
-            # Create a simple station
-            station = Station(
-                name="Hauptbahnhof",
-                geom=".jkdfaghjkl",
-                scenario=scenario,
-                is_electrified=False,
-                power_total=100,
-            )
-            session.add(station)
-            session.commit()
+        if session.bind.dialect.name == "sqlite":
+            with pytest.raises(ValueError):
+                # Create a simple station
+                station = Station(
+                    name="Hauptbahnhof",
+                    geom=".jkdfaghjkl",
+                    scenario=scenario,
+                    is_electrified=False,
+                    power_total=None,
+                )
+                session.add(station)
+                session.commit()
+        else:
+            with pytest.raises(sqlalchemy.exc.InternalError):
+                # Create a simple station
+                station = Station(
+                    name="Hauptbahnhof",
+                    geom=".jkdfaghjkl",
+                    scenario=scenario,
+                    is_electrified=False,
+                    power_total=None,
+                )
+                session.add(station)
+                session.commit()
         session.rollback()
 
     def test_create_station_complete(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573 0)"
-
+        lat = 52.5162607
+        lon = 13.3321242
+        alt = 0
+        wkt = self.wkt_for_coordinates(lon, lat, alt)
         # Create a simple station
         station = Station(
             name="Hauptbahnhof",
-            geom=geom,
+            geom=wkt,
             scenario=scenario,
             is_electrified=True,
             amount_charging_places=2,
@@ -522,3 +545,12 @@ class TestStation(TestGeneral):
         )
         session.add(station)
         session.commit()
+
+        session.expire(station)
+
+        # Assure that the "geom" attribute still works
+        # Create a shapely geometry from station.geom
+        from_db = to_shape(station.geom)
+        assert from_db.x == lon
+        assert from_db.y == lat
+        assert from_db.z == alt

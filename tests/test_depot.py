@@ -1,6 +1,7 @@
 import math
 from datetime import timedelta
 
+import geoalchemy2
 import geoalchemy2.shape as ga_shape
 import pytest
 import sqlalchemy
@@ -24,12 +25,13 @@ from tests.test_general import TestGeneral
 class TestDepot(TestGeneral):
     @pytest.fixture()
     def depot_with_content(self, session, scenario):
+        wkt = self.wkt_for_coordinates(0, 0, 0)
         # Create a simple depot
         station = Station(
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=wkt,
             is_electrified=False,
         )
         session.add(station)
@@ -269,17 +271,38 @@ class TestProcess(TestGeneral):
         session.add(process)
         session.commit()
 
-        # test invalid process with negative duration and power
-        with pytest.raises(sqlalchemy.exc.IntegrityError):
-            process = Process(
-                name="Test Process number 4",
-                scenario=scenario,
-                dispatchable=False,
-                duration=timedelta(minutes=-30),
-                electric_power=-150,
-            )
-            session.add(process)
-            session.commit()
+        # test invalid process with negative duration
+        with pytest.raises(ValueError):
+            try:
+                process = Process(
+                    name="Test Process number 4",
+                    scenario=scenario,
+                    dispatchable=False,
+                    duration=timedelta(minutes=-30),
+                    electric_power=150,
+                )
+                session.add(process)
+                session.commit()
+            except ValueError as e:
+                session.rollback()
+                raise e
+
+        # Test invalid process with negative electric power
+        with pytest.raises(ValueError):
+            try:
+                process = Process(
+                    name="Test Process number 5",
+                    scenario=scenario,
+                    dispatchable=False,
+                    duration=timedelta(minutes=30),
+                    electric_power=-150,
+                )
+                session.add(process)
+                session.commit()
+            except ValueError as e:
+                session.rollback()
+                raise e
+
         session.rollback()
 
     def test_process_plan(self, session, scenario):
@@ -312,11 +335,12 @@ class TestGeography(TestGeneral):
     def depot_with_geography(self, session, scenario):
         """Create a depot with a bounding box."""
         # Create a station
+        wkt = self.wkt_for_coordinates(13.4050, 52.5200, 0)
         station = Station(
             scenario=scenario,
             name="Geo Station",
             name_short="GS",
-            geom="POINT(13.4050 52.5200 0)",  # Berlin coordinates
+            geom=wkt,  # Berlin coordinates
             is_electrified=False,
         )
         session.add(station)

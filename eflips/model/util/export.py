@@ -28,11 +28,11 @@ from eflips.model.depot import Process as Process
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
 )
-from eflips.model.general import ConsumptionLut as ConsumptionLut
-from eflips.model.general import Temperatures as Temperatures
 from eflips.model.general import BatteryType as BatteryType
+from eflips.model.general import ConsumptionLut as ConsumptionLut
 from eflips.model.general import Event as Event
 from eflips.model.general import Scenario as Scenario
+from eflips.model.general import Temperatures as Temperatures
 from eflips.model.general import Vehicle as Vehicle
 from eflips.model.general import VehicleClass as VehicleClass
 from eflips.model.general import VehicleType as VehicleType
@@ -154,7 +154,7 @@ def get_or_update_max_sequence_number(
                     f'ALTER SEQUENCE "{table_name + SEQUENCE_NUMBER_SUFFIX}" RESTART WITH {max_id + 1}'
                 )
                 cur.execute(
-                    f'SELECT NEXTVAL(\'"public"."{table_name + SEQUENCE_NUMBER_SUFFIX}"\')'
+                    f"SELECT NEXTVAL('\"{table_name + SEQUENCE_NUMBER_SUFFIX}\"')"
                 )
                 res = cur.fetchone()
                 new_max_id = res[0] if res is not None else None
@@ -190,6 +190,9 @@ def extract_scenario(scenario_id: int, session: Session) -> List[Base]:
     :param session: An active database session.
     :return: A list of Base objects representing the scenario.
     """
+    if session.bind.dialect.name != "postgresql":  # type: ignore
+        raise ValueError("Export/Import is only supported for PostgreSQL databases.")
+
     all_related_objects = []
 
     scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one_or_none()

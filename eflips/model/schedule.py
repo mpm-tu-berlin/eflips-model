@@ -15,11 +15,12 @@ from sqlalchemy import (
     Interval,
     Text,
     UniqueConstraint,
+    Integer,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.elements import SQLCoreOperations
 
-from eflips.model import Base, ConsistencyWarning
+from eflips.model import Base, ConsistencyWarning, TimeStampWithTz
 
 if TYPE_CHECKING:
     # This makes hybrid_property's have the same typing as normal property until stubs are improved.
@@ -40,7 +41,9 @@ class StopTime(Base):
 
     __tablename__ = "StopTime"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -59,7 +62,7 @@ class StopTime(Base):
     """The trip."""
 
     arrival_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+        DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"), nullable=False
     )
     """The arrival time at the station."""
 
@@ -106,7 +109,9 @@ class Trip(Base):
 
     __tablename__ = "Trip"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -186,7 +191,9 @@ class Trip(Base):
         return cls.block  # type: ignore[return-value]
 
     departure_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"),
+        nullable=False,
+        index=True,
     )
     """
     The departure time at the first station.
@@ -196,7 +203,9 @@ class Trip(Base):
     """
 
     arrival_time: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
+        DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"),
+        nullable=False,
+        index=True,
     )
     """
     The arrival time at the last station.
@@ -362,7 +371,9 @@ class Block(Base):
 
     __tablename__ = "Block"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)

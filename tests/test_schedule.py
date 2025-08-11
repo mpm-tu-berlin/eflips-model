@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+import geoalchemy2
 import pytest
 import sqlalchemy
 
@@ -27,7 +28,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_1 = Station(
             name="Hauptbahnhof",
-            geom="POINT(13.304398212525141 52.4995532470573 0)",
+            geom=self.wkt_for_coordinates(0, 0, 0),  # Berlin coordinates
             scenario=scenario,
             is_electrified=False,
         )
@@ -35,7 +36,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_2 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(1, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
@@ -145,7 +146,7 @@ class TestTripAndStopTime(TestGeneral):
 
         intermediate_station = Station(
             name="Zwischenstation",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(2, 0, 0),
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -172,6 +173,8 @@ class TestTripAndStopTime(TestGeneral):
         session.commit()
 
     def test_stop_time_invalid_dwell_duration(self, session, trip):
+        if session.bind.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support Interval constraints")
         session.add(trip)
 
         stop_times = []
@@ -261,7 +264,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(1, 0, 0),
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -294,7 +297,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(3, 0, 0),
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -405,7 +408,7 @@ class TestTripAndStopTime(TestGeneral):
             stations.append(
                 Station(
                     name=f"Station {i}",
-                    geom=f"POINT({i} {i} 0)",
+                    geom=self.wkt_for_coordinates(i, i, 0),
                     scenario=trip.scenario,
                     is_electrified=False,
                 )
@@ -453,14 +456,14 @@ class TestBlock(TestGeneral):
     def trips(self, session, scenario):
         station_1 = Station(
             name="Hauptbahnhof",
-            geom="POINT(13.304398212525141 52.4995532470573 0)",
+            geom=self.wkt_for_coordinates(13.304398212525141, 52.4995532470573, 0),
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(2, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
@@ -605,14 +608,14 @@ class TestRotation(TestGeneral):
     def trips(self, session, scenario):
         station_1 = Station(
             name="Hauptbahnhof",
-            geom="POINT(13.304398212525141 52.4995532470573 0)",
+            geom=self.wkt_for_coordinates(2, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=self.wkt_for_coordinates(2, 0, 0),
             scenario=scenario,
             is_electrified=False,
         )
