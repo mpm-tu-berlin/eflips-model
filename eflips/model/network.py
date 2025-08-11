@@ -518,7 +518,7 @@ def fixup_geometry_for_spatialite_station(
     _: Any, con: sqlalchemy.engine.base.Connection, target: Station
 ) -> None:
     """
-    SpatiaLite - GEoAlchemy is quite broken. It supports 3D geometries just fine, but they must be called "LINESTRING"
+    SpatiaLite - GeoAlchemy is quite broken. It supports 3D geometries just fine, but they must be called "LINESTRING"
     as WKT type, not "LINESTRING Z". This function fixes the geometry before inserting it into the database.
     :param _:
     :param con:
