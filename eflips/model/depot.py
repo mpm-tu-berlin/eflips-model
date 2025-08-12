@@ -585,6 +585,7 @@ class Area(Base):
     charging_point_type_id: Mapped[int] = mapped_column(
         ForeignKey("ChargingPointType.id"), nullable=True
     )
+    """If this is a charging area, this is the type of charging point. Used for TCO/LCA calculations."""
 
     charging_point_type: Mapped["ChargingPointType"] = relationship(
         "ChargingPointType", back_populates="areas"
@@ -641,7 +642,7 @@ class Area(Base):
         for a direct area, this is the length of the side that needs to have road access.
         """
 
-        # We cannot calcualte the size if the vehicle type is not set
+        # We cannot calculate the size if the vehicle type is not set
         if self.vehicle_type is None:
             return None
 
