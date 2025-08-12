@@ -112,9 +112,52 @@ class Scenario(Base):
     """The unique identifier of the manager. Only used in the `django.simba` project."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        postgresql.JSONB,
+        nullable=True,
+        server_default="""
+            {
+            "project_duration": 20,
+            "interest_rate": 0.04,
+            "inflation_rate": 0.02,
+            "staff_cost": null,
+            "energy_cost": null,
+            "maint_cost": null,
+            "maint_infr_cost": null,
+            "taxes": 0,
+            "insurance": 0,
+            "pef_general": 0.02,
+            "pef_wages": 0.025,
+            "pef_energy": 0.038,
+            "pef_insurance": 0.02
+        }
+            """,
     )
-    """The parameters for the total cost of ownership (TCO) calculation. Stored as a JSON object."""
+    """
+    The TCO (Total Cost of Ownership) parameters for the scenario analysis.
+    Stored as a JSON object containing the following parameters:
+
+    Financial Parameters:
+    - project_duration: Analysis period in years
+    - interest_rate: Interest rate (value between 0 and 1)
+    - inflation_rate: General inflation rate (value between 0 and 1)
+
+    Cost Parameters:
+    - staff_cost: Cost per staff member per hour
+    - energy_cost: Cost per kWh of energy
+    - maint_cost: Maintenance cost per vehicle per kilometer
+    - maint_infr_cost: Maintenance cost per charging point and year
+    - taxes: Tax cost per vehicle and year
+    - insurance: Insurance cost per vehicle
+
+    Price Escalation Factors (PEF):
+    - pef_general: General price escalation factor (value between 0 and 1)
+    - pef_wages: Wage price escalation factor (value between 0 and 1)
+    - pef_energy: Energy price escalation factor (value between 0 and 1)
+    - pef_insurance: Insurance price escalation factor (value between 0 and 1)
+
+    Note: Cost parameters can be set to null if not applicable to the analysis.
+    Price escalation factors represent annual cost increase rates above inflation.
+    """
 
     # Most of the other columns (all except the Assoc-Tables for many-to-many relationships) have the scenario_id
     # as a foreign key. They are mapped below.
@@ -677,10 +720,23 @@ class VehicleType(Base):
     _table_args_list.append(allowed_mass_constraint)
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        postgresql.JSONB,
+        nullable=True,
+        server_default="""
+        {
+            "useful_life":14,
+            "procurement_cost": null,
+            "cost_escalation": 0.02
+        }
+        """,
     )
-    """The TCO parameters of the vehicle type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
-    Stored as a JSON object."""
+    """The TCO (Total Cost of Ownership) parameters of the vehicle type.
+    
+    This parameter stores a JSON object containing the following fields:
+    - "useful_life": The expected operational lifetime of the vehicle in years
+    - "procurement_cost": The initial purchase cost per vehicle
+    - "cost_escalation": Annual cost escalation factor as a decimal between 0 and 1 (e.g., 0.02 represents 2% annual cost increase)
+    """
 
     consumption: Mapped[float] = mapped_column(Float, nullable=True)
     """
@@ -781,10 +837,33 @@ class BatteryType(Base):
     """The chemistry of the battery. Stored as a JSON object, defined by eflips-LCA"""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        postgresql.JSONB,
+        nullable=True,
+        server_default="""
+        {
+            "useful_life":7,
+            "procurement_cost": null,
+            "cost_escalation":-0.03
+        }
+        """,
     )
-    """The TCO parameters of the battery type. It should contain at least "procurement_per_kWh", "lifetime" and "price_escalation_factor". 
-    Stored as a JSON object."""
+    """
+    The Total Cost of Ownership (TCO) parameters for the battery type.
+    
+    Stored as a JSON object containing the following fields:
+    
+    - useful_life (int): The expected operational lifespan of the battery in years.
+      Represents how long the battery is expected to maintain acceptable 
+      performance before requiring replacement.
+    
+    - procurement_cost (float or null): The initial acquisition cost per kWh 
+      of battery capacity.
+    
+    - cost_escalation (float): The annual rate of cost change as a decimal 
+      between 0 and 1. Negative values indicate cost reductions over time,
+      while positive values indicate cost increases. For example, -0.03 
+      represents a 3% annual cost reduction.
+    """
 
     def __repr__(self) -> str:
         return f"<BatteryType (id={self.id}, specific_mass={self.specific_mass}, chemistry={self.chemistry})>"
@@ -1418,10 +1497,29 @@ class ChargingPointType(Base):
     """The short name of the charging point type (if available)."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        postgresql.JSONB,
+        nullable=True,
+        server_default="""
+        {
+            "useful_life":20,
+            "procurement_cost": null,
+            "cost_escalation":0.02
+        }
+        """,
     )
-    """The TCO parameters of the charging point type. It should contain at least "procurement", "lifetime" and "price_escalation_factor". 
-    Stored as a JSON object."""
+    """The TCO (Total Cost of Ownership) parameters of the charging point.
+
+    Stored as a JSON object containing the following fields:
+
+    - useful_life (int): Expected operational lifespan of the charging point in years.
+      Default: 20 years
+
+    - procurement_cost (float, optional): Initial purchase cost per charging point.
+
+    - cost_escalation (float): Annual cost escalation rate as a decimal.
+      Should be between 0.0 and 1.0 (e.g., 0.02 = 2% annual increase).
+      Used to project future operational costs over the useful life period.
+    """
 
     stations: Mapped[List["Station"]] = relationship(
         "Station",
