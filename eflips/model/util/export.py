@@ -145,9 +145,12 @@ def get_or_update_max_sequence_number(
     result = {}
 
     # Detect database type based on connection object
-    conn_type = str(type(conn))
-    is_sqlite = "sqlite3" in conn_type.lower()
-    is_postgres = "psycopg2" in conn_type.lower()
+    is_sqlite = isinstance(conn, sqlite3.Connection)
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    if not (is_sqlite or is_postgres):
+        raise ValueError(
+            "Unsupported database connection type. Only psycopg2 (PostgreSQL) and sqlite3 (SQLite) are supported."
+        )
 
     if is_postgres:
         SEQUENCE_NUMBER_SUFFIX = "_id_seq"
@@ -227,7 +230,7 @@ def get_or_update_max_sequence_number(
 
     else:
         raise ValueError(
-            f"Unsupported database connection type: {conn_type}. "
+            f"Unsupported database connection type: {type(conn).__name__}. "
             "Only PostgreSQL (psycopg2) and SQLite (sqlite3) are supported."
         )
 
