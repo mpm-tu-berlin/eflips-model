@@ -6,7 +6,7 @@ import pytest
 import sqlalchemy
 from geoalchemy2.shape import from_shape
 from shapely import Point
-from sqlalchemy import create_engine
+from eflips.model import create_engine
 from sqlalchemy.orm import Session
 
 from eflips.model import (
@@ -156,7 +156,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom=from_shape(Point(0, 0)),
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_1)
@@ -165,7 +165,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 2",
             name_short="TS2",
-            geom=from_shape(Point(1, 0)),
+            geom=from_shape(Point(1, 0), srid=4326),
             is_electrified=False,
         )
         session.add(stop_2)
@@ -174,7 +174,7 @@ class TestGeneral:
             scenario=scenario,
             name="Test Station 3",
             name_short="TS3",
-            geom=from_shape(Point(2, 0)),
+            geom=from_shape(Point(2, 0), srid=4326),
             is_electrified=False,
         )
 
@@ -986,6 +986,8 @@ class TestEvent(TestGeneral):
         session.commit()
 
     def test_create_truly_overlapping_events(self, session, sample_content):
+        if session.bind.engine.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support this type of constraint")
         # Creating an event which ends after the next event starts should not be allowed
         event_1 = Event(
             scenario=session.query(Scenario).first(),
@@ -1056,6 +1058,8 @@ class TestEvent(TestGeneral):
         session.rollback()
 
     def test_create_overlapping_events(self, session, sample_content):
+        if session.bind.engine.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support this type of constraint")
         # Creating an event with its start time being exactly the same as the end time of another event should not be allowed
         event_1 = Event(
             scenario=session.query(Scenario).first(),
@@ -1547,6 +1551,8 @@ class TestTemperatures(TestGeneral):
         assert temperatures.datetimes[0].date() != temperatures.datetimes[1].date()
 
     def test_mismatched_array_lengths(self, session, scenario):
+        if session.bind.engine.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support this type of constraint")
         # Attempt to create a Temperatures object with mismatched array lengths
         # This should now raise an IntegrityError due to the CheckConstraint
         temperatures = Temperatures(

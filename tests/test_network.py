@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 import shapely
 import sqlalchemy
-from geoalchemy2.shape import from_shape
+from geoalchemy2.shape import from_shape, to_shape
 from shapely import Point
 from shapely.geometry.linestring import LineString
 from sqlalchemy import func
@@ -38,14 +38,14 @@ class TestRoute(TestGeneral):
         """Create two stations for testing."""
         station_1 = Station(
             name="Hauptbahnhof",
-            geom=from_shape(Point(13.304398212525141, 52.4995532470573)),
+            geom=from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -102,7 +102,8 @@ class TestRoute(TestGeneral):
                     [13.304398212525141, 52.4995532470573],
                     [13.328859958740962, 52.50315841433728],
                 ]
-            )
+            ),
+            srid=4326,
         )
 
         # Debug: create a WKT from shape
@@ -122,7 +123,8 @@ class TestRoute(TestGeneral):
         session.add(route)
 
         # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
+        with session.no_autoflush:
+            route.distance = Route.calculate_length(session, wkt)
         session.commit()
 
         # Check if the route was created correctly
@@ -130,12 +132,15 @@ class TestRoute(TestGeneral):
         session.expire(route)
         # Re-load the route to check if it was created correctly
         route = session.query(Route).filter(Route.id == id).one()
-        loaded_geom = route.geom
+        loaded_geom = to_shape(route.geom)
 
-        loaded_wkt = shapely.from_wkb(bytes(loaded_geom.data)).wkt
+        loaded_wkt = loaded_geom.wkt
         assert loaded_wkt == wkt
 
     def test_create_route_invalid_dimension(self, session, scenario, stations):
+        if session.bind.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support protecting against invalid dimensions")
+
         line = Line(name="1 - Hauptbahnhof <-> Hauptfriedhof", scenario=scenario)
         session.add(line)
         session.commit()
@@ -147,8 +152,10 @@ class TestRoute(TestGeneral):
                     [13.304398212525141, 52.4995532470573, 0],
                     [13.328859958740962, 52.5031584143372, 0],
                 ]
-            )
+            ),
+            srid=4326,
         )
+        wkt = shapely.from_wkb(bytes(shape.data)).wkt
 
         with pytest.raises(sqlalchemy.exc.DataError):
             route = Route(
@@ -165,7 +172,9 @@ class TestRoute(TestGeneral):
             session.add(route)
 
             # Use GeoAlchemy to calculate the distance
-            route.distance = session.scalar(func.ST_Length(route.geom, True).select())
+            # Use GeoAlchemy to calculate the distance
+            with session.no_autoflush:
+                route.distance = Route.calculate_length(session, wkt)
             session.commit()
 
     def test_create_route_invalid_distance(self, session, scenario, stations):
@@ -202,7 +211,8 @@ class TestRoute(TestGeneral):
                     [13.304398212525141, 52.4995532470573],
                     [13.328859958740962, 52.5031584143372],
                 ]
-            )
+            ),
+            srid=4326,
         )
 
         route = Route(
@@ -372,7 +382,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -404,7 +414,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -519,7 +529,7 @@ class TestRoute(TestGeneral):
 
 class TestStation(TestGeneral):
     def test_create_station(self, session, scenario):
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573))
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326)
         wkt = shapely.from_wkb(bytes(geom.data)).wkt
 
         # Create a simple station
@@ -535,11 +545,13 @@ class TestStation(TestGeneral):
         session.expire(station)
         # Re-load the station to check if it was created correctly
         station = session.get(Station, id)
-        loaded_wkt = shapely.from_wkb(bytes(station.geom.data)).wkt
+        loaded_wkt = to_shape(station.geom).wkt
         assert loaded_wkt == wkt
 
     def test_create_station_invalid_dimension(self, session, scenario):
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 0))
+        if session.bind.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support protecting against invalid dimensions")
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 0), srid=4326)
 
         # Create a simple station
         with pytest.raises(sqlalchemy.exc.DataError):
@@ -553,7 +565,7 @@ class TestStation(TestGeneral):
             session.commit()
 
     def test_create_station_invalid_electrification(self, session, scenario):
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573))
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326)
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             # Create a simple station
             station = Station(
@@ -578,6 +590,8 @@ class TestStation(TestGeneral):
             session.commit()
 
     def test_create_station_invalid_geom(self, session, scenario):
+        if session.bind.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support protecting against invalid geometries")
         with pytest.raises(sqlalchemy.exc.InternalError):
             # Create a simple station
             station = Station(
@@ -585,14 +599,14 @@ class TestStation(TestGeneral):
                 geom=".jkdfaghjkl",
                 scenario=scenario,
                 is_electrified=False,
-                power_total=100,
+                power_total=None,
             )
             session.add(station)
             session.commit()
         session.rollback()
 
     def test_create_station_complete(self, session, scenario):
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573))
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326)
 
         # Create a simple station
         station = Station(

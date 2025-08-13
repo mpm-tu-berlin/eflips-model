@@ -28,7 +28,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_1 = Station(
             name="Hauptbahnhof",
-            geom=from_shape(Point(13.304398212525141, 52.4995532470573)),
+            geom=from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -36,7 +36,7 @@ class TestTripAndStopTime(TestGeneral):
 
         stop_2 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -146,7 +146,7 @@ class TestTripAndStopTime(TestGeneral):
 
         intermediate_station = Station(
             name="Zwischenstation",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -173,6 +173,8 @@ class TestTripAndStopTime(TestGeneral):
         session.commit()
 
     def test_stop_time_invalid_dwell_duration(self, session, trip):
+        if session.bind.dialect.name == "sqlite":
+            pytest.skip("SQLite does not support testing for dwell durations")
         session.add(trip)
 
         stop_times = []
@@ -262,7 +264,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -295,7 +297,7 @@ class TestTripAndStopTime(TestGeneral):
 
         station_3 = Station(
             name="Station 3",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=trip.scenario,
             is_electrified=False,
         )
@@ -406,7 +408,7 @@ class TestTripAndStopTime(TestGeneral):
             stations.append(
                 Station(
                     name=f"Station {i}",
-                    geom=from_shape(Point(i, i)),
+                    geom=from_shape(Point(i, i), srid=4326),
                     scenario=trip.scenario,
                     is_electrified=False,
                 )
@@ -454,14 +456,14 @@ class TestRotation(TestGeneral):
     def trips(self, session, scenario):
         station_1 = Station(
             name="Hauptbahnhof",
-            geom=from_shape(Point(13.304398212525141, 52.4995532470573)),
+            geom=from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )

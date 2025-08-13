@@ -18,9 +18,10 @@ class TestExport(TestGeneral):
             all_objects.extend(extract_scenario(scenario_id, session))
 
         # Get the alembic version
-        with session.connection().connection.driver_connection.cursor() as cur:  # type: ignore
-            cur.execute("SELECT * FROM alembic_version")
-            alembic_version_str = cur.fetchone()[0]
+        cur = session.connection().connection.driver_connection.cursor()
+        cur.execute("SELECT * FROM alembic_version")
+        alembic_version_str = cur.fetchone()[0]
+        cur.close()
 
         # Create a dictionary with the alembic version and the objects
         to_dump = {"alembic_version": alembic_version_str, "objects": all_objects}
@@ -37,14 +38,15 @@ class TestExport(TestGeneral):
         assert isinstance(alembic_version_from_file, str)
 
         # Validate the alembic version
-        with session.connection().connection.driver_connection.cursor() as cur:  # type: ignore
-            cur.execute("SELECT * FROM alembic_version")
-            alembic_version_from_db = cur.fetchone()[0]
-            if alembic_version_from_db != alembic_version_from_file:
-                raise ValueError(
-                    f"Database alembic version ({alembic_version_from_db}) does not match the file's version "
-                    f"({alembic_version_from_file})."
-                )
+        cur = session.connection().connection.driver_connection.cursor()
+        cur.execute("SELECT * FROM alembic_version")
+        alembic_version_from_db = cur.fetchone()[0]
+        if alembic_version_from_db != alembic_version_from_file:
+            raise ValueError(
+                f"Database alembic version ({alembic_version_from_db}) does not match the file's version "
+                f"({alembic_version_from_file})."
+            )
+        cur.close()
 
         # Find the maximum IDs in the database and update the sequence numbers
         starts = get_or_update_max_sequence_number(session.connection().connection.driver_connection, do_update=False)  # type: ignore

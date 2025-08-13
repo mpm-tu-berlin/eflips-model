@@ -8,10 +8,10 @@ from typing import Any, Dict, List, TYPE_CHECKING, Union
 import numpy as np
 import pandas as pd
 from sqlalchemy import (
+    Uuid,
     BigInteger,
     Boolean,
     CheckConstraint,
-    Column,
     DateTime,
     Enum as SqlEnum,
     event,
@@ -21,16 +21,25 @@ from sqlalchemy import (
     Integer,
     Text,
     UniqueConstraint,
-    UUID,
     Index,
+    JSON,
+    PickleType,
+    DDL,
 )
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import ExcludeConstraint
-from sqlalchemy.orm import make_transient, Mapped, mapped_column, relationship, Session
+from sqlalchemy.orm import (
+    make_transient,
+    Mapped,
+    mapped_column,
+    relationship,
+    Session,
+)
 
 from eflips.model import Base, ConsistencyWarning
 from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
 from eflips.model.schedule import Rotation, StopTime, Trip
+from eflips.model import Base, ConsistencyWarning, TimeStampWithTz
+from eflips.model.depot import AssocAreaProcess
 
 if TYPE_CHECKING:
     from eflips.model import (
@@ -45,6 +54,7 @@ if TYPE_CHECKING:
         Plan,
         Area,
         Process,
+        AssocPlanProcess,
     )
 
 
@@ -57,7 +67,9 @@ class ScenarioType(PyEnum):
 class Scenario(Base):
     __tablename__ = "Scenario"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the scenario. Auto-incremented."""
 
     parent_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=True)
@@ -83,28 +95,33 @@ class Scenario(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the scenario."""
     created: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"),
+        server_default=func.now(),
     )
     """The time the scenario was created. Automatically set to the current time at creation."""
-    finished: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"), nullable=True
+    )
     """
     The time the simulation was finished. Automatically set to the current time at simulation end. Null if not yet 
     finished.
     """
     default_simba_options: str = '{"eta": false, "days": null, "mode": ["sim", "report"], "seed": 1, "config": null, "margin": 1, "logfile": "", "interval": 1, "loglevel": "INFO", "strategy": "distributed", "show_plots": false, "skip_plots": true, "cs_power_opps": 300, "gc_power_deps": 100000, "gc_power_opps": 100000, "input_schedule": null, "PRICE_THRESHOLD": -100, "rotation_filter": null, "signal_time_dif": 10, "cost_calculation": false, "desired_soc_deps": 1.0, "desired_soc_opps": 1.0, "optimizer_config": null, "output_directory": "data/sim_outputs", "include_price_csv": null, "min_charging_time": 0, "station_data_path": null, "ALLOW_NEGATIVE_SOC": true, "cs_power_deps_depb": 150, "cs_power_deps_oppb": 150, "vehicle_types_path": "data/examples/vehicle_types.json", "cost_parameters_file": null, "electrified_stations": null, "default_voltage_level": "MV", "propagate_mode_errors": false, "min_recharge_deps_depb": 1, "min_recharge_deps_oppb": 1, "preferred_charging_type": "depb", "default_buffer_time_opps": 0, "include_price_csv_option": [], "rotation_filter_variable": null, "check_rotation_consistency": false, "skip_inconsistent_rotations": false, "level_of_loading_over_day_path": null, "outside_temperature_over_day_path": null}'
     simba_options: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=False, server_default=default_simba_options
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        nullable=False,
+        server_default=default_simba_options,
     )
     """The options for the simBA simulation. Stored as a JSON object."""
     eflips_depot_options: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=True  # type: ignore
     )
     """The options for the eflips-depot simulation. Stored as a JSON object."""
     task_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid,
         nullable=False,
         unique=True,
-        server_default=func.gen_random_uuid(),
+        default=uuid.uuid4,
     )
     """The task id of the simulation. Automatically set to a UUID when a scenario is submitted for simulation."""
 
@@ -112,7 +129,7 @@ class Scenario(Base):
     """The unique identifier of the manager. Only used in the `django.simba` project."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB,
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
         server_default="""
             {
@@ -614,7 +631,9 @@ class VehicleType(Base):
     __tablename__ = "VehicleType"
     _table_args_list = []
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the vehicle type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"))
@@ -654,7 +673,7 @@ class VehicleType(Base):
     _table_args_list.append(battery_capacity_reserve_constraint)
 
     charging_curve: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Float, dimensions=2)
+        postgresql.ARRAY(Float, dimensions=2).with_variant(JSON(), "sqlite")
     )
     """
     The charging curve of the vehicle type. This is a 2D array of floats with two rows. The first row contains
@@ -664,7 +683,8 @@ class VehicleType(Base):
     """
 
     v2g_curve: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Float, dimensions=2), nullable=True
+        postgresql.ARRAY(Float, dimensions=2).with_variant(JSON(), "sqlite"),
+        nullable=True,
     )
     """
     The vehicle-to-grid curve of the vehicle type. This is a 2D array of floats with two rows. The first row contains
@@ -720,7 +740,7 @@ class VehicleType(Base):
     _table_args_list.append(allowed_mass_constraint)
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB,
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
         server_default="""
         {
@@ -816,7 +836,9 @@ def check_vehicle_type_before_commit(_: Any, __: Any, target: VehicleType) -> No
 class BatteryType(Base):
     __tablename__ = "BatteryType"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -833,11 +855,13 @@ class BatteryType(Base):
     specific_mass: Mapped[float] = mapped_column(Float)
     """The specific mass of the battery in kg/kWh. Relative to gross (not net) capacity."""
 
-    chemistry: Mapped[Dict[str, Any]] = mapped_column(postgresql.JSONB)
+    chemistry: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB().with_variant(JSON, "sqlite")  # type: ignore
+    )
     """The chemistry of the battery. Stored as a JSON object, defined by eflips-LCA"""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB,
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
         server_default="""
         {
@@ -876,7 +900,9 @@ class Vehicle(Base):
 
     __tablename__ = "Vehicle"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -923,7 +949,9 @@ class VehicleClass(Base):
 
     __tablename__ = "VehicleClass"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the battery type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -968,7 +996,9 @@ class AssocVehicleTypeVehicleClass(Base):
     """
 
     __tablename__ = "AssocVehicleTypeVehicleClass"
-    id = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """Not the primary key and not used in SQLAlchemy, but required by Django."""
 
     vehicle_type_id: Mapped[int] = mapped_column(ForeignKey("VehicleType.id"))
@@ -1033,7 +1063,9 @@ class Event(Base):
 
     __tablename__ = "Event"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the event. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -1079,11 +1111,15 @@ class Event(Base):
     trip: Mapped["Trip"] = relationship("Trip", back_populates="events")
 
     time_start: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=False
+        DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"),
+        nullable=False,
+        index=False,
     )
     """The time the event starts."""
 
-    time_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    time_end: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"), nullable=False
+    )
     """The time the event ends."""
 
     soc_start: Mapped[float] = mapped_column(Float, nullable=False)
@@ -1103,7 +1139,7 @@ class Event(Base):
     """A description of the event. Used to display additional information to the user."""
 
     timeseries: Mapped[Dict[str, List[Union[datetime, str, float]]]] = mapped_column(
-        postgresql.JSONB, nullable=True
+        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=True  # type: ignore
     )
     """
     Dict with mandatory keys „time“ (ISO 18601 with TZ), „soc“ (0-1) and optional keys „distance“ (m, along route for 
@@ -1111,13 +1147,6 @@ class Event(Base):
     """
 
     __table_args__ = (
-        ExcludeConstraint(  # type: ignore
-            (Column("scenario_id"), "="),
-            (Column("vehicle_id"), "="),
-            (func.tstzrange(Column("time_start"), Column("time_end"), "()"), "&&"),
-            name="scenario_id_time_range_excl",
-            using="gist",
-        ),
         CheckConstraint("soc_start <= 1"),
         CheckConstraint("soc_end <= 1"),
         # Also make sure the event type is valid for the nullable fields
@@ -1130,12 +1159,33 @@ class Event(Base):
         ),
         CheckConstraint("time_start < time_end", name="duration_positive"),
         Index(
-            "idx_station_event_time_range", station_id, event_type, time_start, time_end
+            "idx_station_event_time_range",
+            station_id,
+            event_type,
+            time_start,
+            time_end,
         ),
     )
 
     def __repr__(self) -> str:
         return f"<Event(id={self.id}, event_type={self.event_type}, time_start={self.time_start}, time_end={self.time_end})>"
+
+
+# Add PostgreSQL-specific constraint using DDL event
+postgresql_exclude = DDL(
+    f"""
+    ALTER TABLE "{Event.__tablename__}" ADD CONSTRAINT scenario_id_time_range_excl 
+    EXCLUDE USING gist (
+        scenario_id WITH =,
+        vehicle_id WITH =,
+        tstzrange(time_start, time_end, '()') WITH &&
+    )
+"""
+)  # type: ignore
+
+event.listen(
+    Event.__table__, "after_create", postgresql_exclude.execute_if(dialect="postgresql")
+)
 
 
 @event.listens_for(Event, "before_insert")
@@ -1207,7 +1257,9 @@ class ConsumptionLut(Base):
         UniqueConstraint("scenario_id", "name"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the consumption. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -1230,14 +1282,17 @@ class ConsumptionLut(Base):
     )
     """The vehicle class."""
 
-    columns = mapped_column(postgresql.JSONB, nullable=False)
+    columns = mapped_column(
+        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=False  # type: ignore
+    )
     """
     A JSON-encoded list of column name strings. The order of these should match the order of the values for each row
     in the data_points
     """
 
     data_points: Mapped[List[List[float]]] = mapped_column(
-        postgresql.ARRAY(Float, dimensions=2), nullable=False
+        postgresql.ARRAY(Float, dimensions=2).with_variant(JSON(), "sqlite"),
+        nullable=False,
     )
     """
     A list of data points. These are the coordinates of the data point. Its value is stored in the `value` column.
@@ -1245,7 +1300,8 @@ class ConsumptionLut(Base):
     """
 
     values: Mapped[List[float]] = mapped_column(
-        postgresql.ARRAY(Float, dimensions=1), nullable=False
+        postgresql.ARRAY(Float, dimensions=1).with_variant(JSON(), "sqlite"),
+        nullable=False,
     )
     """
     A list of consumption values in kWh/km. The corresponding temperatures, inclines etc. are stored in the 
@@ -1434,14 +1490,12 @@ class Temperatures(Base):
 
     __tablename__ = "Temperatures"
     __table_args__ = (
-        UniqueConstraint("scenario_id", "id"),  # Only one temperature per scenario
-        CheckConstraint(
-            "array_length(datetimes, 1) = array_length(data, 1)",
-            name="equal_array_lengths",
-        ),
+        UniqueConstraint("scenario_id", "id"),  # This works in both databases
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the consumption. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -1459,18 +1513,35 @@ class Temperatures(Base):
     """
 
     datetimes: Mapped[List[datetime]] = mapped_column(
-        postgresql.ARRAY(DateTime(timezone=True))
+        postgresql.ARRAY(DateTime(timezone=True)).with_variant(PickleType(), "sqlite")
     )
     """
     The datetimes of the temperature data. If is_one_repeating_day is True, this should be a single day.
     The length of this list should be the same as the length of the temperatures.
     """
 
-    data: Mapped[List[float]] = mapped_column(postgresql.ARRAY(Float))
+    data: Mapped[List[float]] = mapped_column(
+        postgresql.ARRAY(Float).with_variant(JSON(), "sqlite")
+    )
     """
     The temperatures in degrees Celsius. The order of the temperatures should match the order of the datetimes.
     The length of this list should be the same as the length of the datetimes.
     """
+
+
+# Add PostgreSQL-specific array check constraint using DDL event
+postgresql_array_check = DDL(
+    f"""
+    ALTER TABLE "{Temperatures.__tablename__}" ADD CONSTRAINT equal_array_lengths 
+    CHECK (array_length(datetimes, 1) = array_length(data, 1))
+"""
+)  # type: ignore
+
+event.listen(
+    Temperatures.__table__,
+    "after_create",
+    postgresql_array_check.execute_if(dialect="postgresql"),
+)
 
 
 class ChargingPointType(Base):
@@ -1481,7 +1552,9 @@ class ChargingPointType(Base):
 
     __tablename__ = "ChargingPointType"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
     """The unique identifier of the charging point type. Auto-incremented."""
 
     scenario_id: Mapped[int] = mapped_column(ForeignKey("Scenario.id"), nullable=False)
@@ -1497,7 +1570,7 @@ class ChargingPointType(Base):
     """The short name of the charging point type (if available)."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB,
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
         server_default="""
         {
