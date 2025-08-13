@@ -1,7 +1,11 @@
 from datetime import datetime, timezone
 
 import pytest
+import shapely
 import sqlalchemy
+from geoalchemy2.shape import from_shape
+from shapely import Point
+from shapely.geometry.linestring import LineString
 from sqlalchemy import func
 
 from eflips.model import (
@@ -34,14 +38,14 @@ class TestRoute(TestGeneral):
         """Create two stations for testing."""
         station_1 = Station(
             name="Hauptbahnhof",
-            geom="POINT(13.304398212525141 52.4995532470573 0)",
+            geom=from_shape(Point(13.304398212525141, 52.4995532470573)),
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
             scenario=scenario,
             is_electrified=False,
         )
@@ -92,7 +96,17 @@ class TestRoute(TestGeneral):
         session.commit()
 
         # Create a shape
-        shape = "LINESTRINGZ(13.304398212525141 52.4995532470573 0,13.328859958740962 52.50315841433728 0)"
+        shape = from_shape(
+            LineString(
+                [
+                    [13.304398212525141, 52.4995532470573],
+                    [13.328859958740962, 52.50315841433728],
+                ]
+            )
+        )
+
+        # Debug: create a WKT from shape
+        wkt = shapely.from_wkb(bytes(shape.data)).wkt
 
         route = Route(
             name="1 Hauptbahnhof -> Hauptfriedhof",
@@ -110,6 +124,49 @@ class TestRoute(TestGeneral):
         # Use GeoAlchemy to calculate the distance
         route.distance = session.scalar(func.ST_Length(route.geom, True).select())
         session.commit()
+
+        # Check if the route was created correctly
+        id = route.id
+        session.expire(route)
+        # Re-load the route to check if it was created correctly
+        route = session.query(Route).filter(Route.id == id).one()
+        loaded_geom = route.geom
+
+        loaded_wkt = shapely.from_wkb(bytes(loaded_geom.data)).wkt
+        assert loaded_wkt == wkt
+
+    def test_create_route_invalid_dimension(self, session, scenario, stations):
+        line = Line(name="1 - Hauptbahnhof <-> Hauptfriedhof", scenario=scenario)
+        session.add(line)
+        session.commit()
+
+        # Create a shape
+        shape = from_shape(
+            LineString(
+                [
+                    [13.304398212525141, 52.4995532470573, 0],
+                    [13.328859958740962, 52.5031584143372, 0],
+                ]
+            )
+        )
+
+        with pytest.raises(sqlalchemy.exc.DataError):
+            route = Route(
+                name="1 Hauptbahnhof -> Hauptfriedhof",
+                name_short="1A",
+                headsign="Hauptfriedhof",
+                departure_station=stations[0],
+                arrival_station=stations[1],
+                line=line,
+                distance=0,
+                geom=shape,
+                scenario=scenario,
+            )
+            session.add(route)
+
+            # Use GeoAlchemy to calculate the distance
+            route.distance = session.scalar(func.ST_Length(route.geom, True).select())
+            session.commit()
 
     def test_create_route_invalid_distance(self, session, scenario, stations):
         session.add_all(stations)
@@ -139,7 +196,14 @@ class TestRoute(TestGeneral):
 
     def test_route_invalid_distance(self, session, scenario, stations):
         # Create a shape
-        shape = "LINESTRINGZ(13.304398212525141 52.4995532470573 0,13.328859958740962 52.50315841433728 0)"
+        shape = from_shape(
+            LineString(
+                [
+                    [13.304398212525141, 52.4995532470573],
+                    [13.328859958740962, 52.5031584143372],
+                ]
+            )
+        )
 
         route = Route(
             scenario=scenario,
@@ -308,7 +372,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
             scenario=scenario,
             is_electrified=False,
         )
@@ -340,7 +404,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom="POINT(13.328859958740962 52.50315841433728 0)",
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728)),
             scenario=scenario,
             is_electrified=False,
         )
@@ -455,7 +519,8 @@ class TestRoute(TestGeneral):
 
 class TestStation(TestGeneral):
     def test_create_station(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573 0)"
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573))
+        wkt = shapely.from_wkb(bytes(geom.data)).wkt
 
         # Create a simple station
         station = Station(
@@ -466,9 +531,29 @@ class TestStation(TestGeneral):
         )
         session.add(station)
         session.commit()
+        id = station.id
+        session.expire(station)
+        # Re-load the station to check if it was created correctly
+        station = session.get(Station, id)
+        loaded_wkt = shapely.from_wkb(bytes(station.geom.data)).wkt
+        assert loaded_wkt == wkt
+
+    def test_create_station_invalid_dimension(self, session, scenario):
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 0))
+
+        # Create a simple station
+        with pytest.raises(sqlalchemy.exc.DataError):
+            station = Station(
+                name="Hauptbahnhof",
+                geom=geom,
+                scenario=scenario,
+                is_electrified=False,
+            )
+            session.add(station)
+            session.commit()
 
     def test_create_station_invalid_electrification(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573 0)"
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573))
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             # Create a simple station
             station = Station(
@@ -507,7 +592,7 @@ class TestStation(TestGeneral):
         session.rollback()
 
     def test_create_station_complete(self, session, scenario):
-        geom = "POINT(13.304398212525141 52.4995532470573 0)"
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573))
 
         # Create a simple station
         station = Station(

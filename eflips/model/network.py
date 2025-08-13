@@ -107,7 +107,7 @@ class Route(Base):
     """The length of the route in meters."""
 
     geom: Mapped[Geometry] = mapped_column(
-        Geometry("LINESTRINGZ", srid=4326), nullable=True
+        Geometry("LINESTRING", srid=4326), nullable=True
     )
     """
     The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
@@ -271,7 +271,7 @@ class Station(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """The short name of the station (if available)."""
 
-    geom: Mapped[Geometry] = mapped_column(Geometry("POINTZ", srid=4326), nullable=True)
+    geom: Mapped[Geometry] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
     """The (optional) location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
 
     is_electrified = mapped_column(Boolean, nullable=False)
@@ -449,7 +449,7 @@ class AssocRouteStation(Base):
     """The station."""
 
     location: Mapped[Geometry] = mapped_column(
-        Geometry("POINTZ", srid=4326), nullable=True
+        Geometry("POINT", srid=4326), nullable=True
     )
     """An optional precise location of the this route's stop at the station. Use WGS84 coordinates (EPSG:4326)."""
 
