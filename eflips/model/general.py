@@ -35,9 +35,6 @@ from sqlalchemy.orm import (
     Session,
 )
 
-from eflips.model import Base, ConsistencyWarning
-from eflips.model.depot import AssocAreaProcess, AssocPlanProcess
-from eflips.model.schedule import Rotation, StopTime, Trip
 from eflips.model import Base, ConsistencyWarning, TimeStampWithTz
 from eflips.model.depot import AssocAreaProcess
 
