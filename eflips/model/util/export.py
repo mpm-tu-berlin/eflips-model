@@ -154,7 +154,7 @@ def get_or_update_max_sequence_number(
                     f'ALTER SEQUENCE "{table_name + SEQUENCE_NUMBER_SUFFIX}" RESTART WITH {max_id + 1}'
                 )
                 cur.execute(
-                    f'SELECT NEXTVAL(\'"public"."{table_name + SEQUENCE_NUMBER_SUFFIX}"\')'
+                    f"SELECT NEXTVAL('\"{table_name + SEQUENCE_NUMBER_SUFFIX}\"')"
                 )
                 res = cur.fetchone()
                 new_max_id = res[0] if res is not None else None
