@@ -106,7 +106,6 @@ class TestRoute(TestGeneral):
             srid=4326,
         )
 
-        # Debug: create a WKT from shape
         wkt = shapely.from_wkb(bytes(shape.data)).wkt
 
         route = Route(
@@ -171,7 +170,6 @@ class TestRoute(TestGeneral):
             )
             session.add(route)
 
-            # Use GeoAlchemy to calculate the distance
             # Use GeoAlchemy to calculate the distance
             with session.no_autoflush:
                 route.distance = Route.calculate_length(session, wkt)

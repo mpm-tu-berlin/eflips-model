@@ -177,7 +177,7 @@ class Route(Base):
             return distance
         elif session.bind.dialect.name == "sqlite":
             # SpatiaLite
-            # The linestring must be in WKT format, and be a "LINESTRINGZ" or "LINESTRING Z"
+            # The linestring must be in WKT format, and be a "LINESTRING"
             if "LINESTRING" not in linestring:
                 raise ValueError(
                     "The linestring must be in WKT format and be a 'LINESTRING'."
