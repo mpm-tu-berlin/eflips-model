@@ -82,7 +82,6 @@ if __name__ == "__main__":
                     f"Database alembic version ({alembic_version_from_db}) does not match the file's version "
                     f"({alembic_version_from_file})."
                 )
-            cur.close()
 
             # Find the maximum IDs in the database and update the sequence numbers
             starts = get_or_update_max_sequence_number(session.connection().connection.driver_connection, do_update=False)  # type: ignore
@@ -104,5 +103,6 @@ if __name__ == "__main__":
             session.rollback()
             raise
         finally:
+            cur.close()
             session.commit()
             session.close()

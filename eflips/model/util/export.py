@@ -361,9 +361,12 @@ if __name__ == "__main__":
                 all_objects.extend(extract_scenario(scenario_id, session))
 
             # Get the alembic version
-            with session.connection().connection.driver_connection.cursor() as cur:  # type: ignore
+            cur = session.connection().connection.driver_connection.cursor()  # type: ignore
+            try:
                 cur.execute("SELECT * FROM alembic_version")
                 alembic_version_str = cur.fetchone()[0]
+            finally:
+                cur.close()
 
             # Create a dictionary with the alembic version and the objects
             to_dump = {"alembic_version": alembic_version_str, "objects": all_objects}
