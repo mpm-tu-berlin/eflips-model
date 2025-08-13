@@ -9,7 +9,7 @@ import pickle
 from argparse import ArgumentParser
 from typing import Dict, List, Union
 
-from sqlalchemy import create_engine
+from eflips.model import create_engine
 from sqlalchemy.orm import Session
 
 import eflips.model
@@ -74,14 +74,14 @@ if __name__ == "__main__":
     with Session(engine) as session:
         try:
             # Validate the alembic version
-            with session.connection().connection.driver_connection.cursor() as cur:  # type: ignore
-                cur.execute("SELECT * FROM alembic_version")
-                alembic_version_from_db = cur.fetchone()[0]
-                if alembic_version_from_db != alembic_version_from_file:
-                    raise ValueError(
-                        f"Database alembic version ({alembic_version_from_db}) does not match the file's version "
-                        f"({alembic_version_from_file})."
-                    )
+            cur = session.connection().connection.driver_connection.cursor()  # type: ignore
+            cur.execute("SELECT * FROM alembic_version")
+            alembic_version_from_db = cur.fetchone()[0]
+            if alembic_version_from_db != alembic_version_from_file:
+                raise ValueError(
+                    f"Database alembic version ({alembic_version_from_db}) does not match the file's version "
+                    f"({alembic_version_from_file})."
+                )
 
             # Find the maximum IDs in the database and update the sequence numbers
             starts = get_or_update_max_sequence_number(session.connection().connection.driver_connection, do_update=False)  # type: ignore
@@ -103,5 +103,6 @@ if __name__ == "__main__":
             session.rollback()
             raise
         finally:
+            cur.close()
             session.commit()
             session.close()

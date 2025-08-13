@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 from typing import List, Dict
 
 import psycopg2
-from sqlalchemy import create_engine
+from eflips.model import create_engine
 from sqlalchemy.orm import (
     class_mapper,
     make_transient,
@@ -27,6 +27,7 @@ from eflips.model.depot import Plan as Plan
 from eflips.model.depot import Process as Process
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass as AssocVehicleTypeVehicleClass,
+    ChargingPointType,
 )
 from eflips.model.general import ConsumptionLut as ConsumptionLut
 from eflips.model.general import Temperatures as Temperatures
@@ -43,6 +44,7 @@ from eflips.model.network import Station as Station
 from eflips.model.schedule import Rotation as Rotation
 from eflips.model.schedule import StopTime as StopTime
 from eflips.model.schedule import Trip as Trip
+import sqlite3
 
 ALL_CLASSES_WITH_SCENARIO_ID = [
     BatteryType,
@@ -64,6 +66,7 @@ ALL_CLASSES_WITH_SCENARIO_ID = [
     AssocPlanProcess,
     ConsumptionLut,
     Temperatures,
+    ChargingPointType,
 ]
 ALL_PURE_ASSOC_CLASSES = [AssocAreaProcess, AssocVehicleTypeVehicleClass]
 ALL_TABLE_CLASSES = ALL_CLASSES_WITH_SCENARIO_ID + ALL_PURE_ASSOC_CLASSES + [Scenario]
@@ -128,41 +131,109 @@ def start_counting_foreign_keys_at(
 
 
 def get_or_update_max_sequence_number(
-    conn: psycopg2.extensions.connection, do_update: bool = False
+    conn: psycopg2.extensions.connection | sqlite3.Connection, do_update: bool = False
 ) -> Dict[str, int]:
     """
     Loads the maximum sequence number for each table in the database. Can be used to determine the starting point for
     the sequence numbers when importing a scenario. Or to fix the sequence numbers after importing a scenario.
-    :param conn: An open database connection.
+    :param conn: An open database connection (PostgreSQL or SQLite).
     :param do_update: If True, the sequence counters will also be updated in the database to continue counting after
     the maximum sequence number.
     :return: A dictionary containing the maximum sequence number for each table.
     """
-    SEQUENCE_NUMBER_SUFFIX = "_id_seq"
     KEY_NAME = "id"  # The name of the primary key column in the tables
     result = {}
-    with conn.cursor() as cur:
-        for table in ALL_TABLE_CLASSES:
-            table_name = table.__name__
-            query = f'SELECT MAX("{KEY_NAME}") FROM "{table_name}"'
-            cur.execute(query)
-            res = cur.fetchone()
-            max_id = res[0] + 1 if res is not None and res[0] is not None else 0
-            result[table_name] = max_id
-            if do_update:
-                cur.execute(
-                    f'ALTER SEQUENCE "{table_name + SEQUENCE_NUMBER_SUFFIX}" RESTART WITH {max_id + 1}'
-                )
-                cur.execute(
-                    f"SELECT NEXTVAL('\"{table_name + SEQUENCE_NUMBER_SUFFIX}\"')"
-                )
+
+    # Detect database type based on connection object
+    is_sqlite = isinstance(conn, sqlite3.Connection)
+    is_postgres = isinstance(conn, psycopg2.extensions.connection)
+    if not (is_sqlite or is_postgres):
+        raise ValueError(
+            "Unsupported database connection type. Only psycopg2 (PostgreSQL) and sqlite3 (SQLite) are supported."
+        )
+
+    if is_postgres:
+        SEQUENCE_NUMBER_SUFFIX = "_id_seq"
+        with conn.cursor() as cur:  # type: ignore
+            for table in ALL_TABLE_CLASSES:
+                table_name = table.__name__
+                query = f'SELECT MAX("{KEY_NAME}") FROM "{table_name}"'
+                cur.execute(query)
                 res = cur.fetchone()
-                new_max_id = res[0] if res is not None else None
-                if new_max_id is None or new_max_id <= max_id:
-                    raise ValueError(
-                        f"Sequence {table_name + SEQUENCE_NUMBER_SUFFIX} did not restart properly. "
-                        f"It is still at {new_max_id}"
+                max_id = res[0] + 1 if res is not None and res[0] is not None else 0
+                result[table_name] = max_id
+                if do_update:
+                    cur.execute(
+                        f'ALTER SEQUENCE "{table_name + SEQUENCE_NUMBER_SUFFIX}" RESTART WITH {max_id + 1}'
                     )
+                    cur.execute(
+                        f"SELECT NEXTVAL('\"{table_name + SEQUENCE_NUMBER_SUFFIX}\"')"
+                    )
+                    res = cur.fetchone()
+                    new_max_id = res[0] if res is not None else None
+                    if new_max_id is None or new_max_id <= max_id:
+                        raise ValueError(
+                            f"Sequence {table_name + SEQUENCE_NUMBER_SUFFIX} did not restart properly. "
+                            f"It is still at {new_max_id}"
+                        )
+
+    elif is_sqlite:
+        cur = conn.cursor()
+        try:
+            for table in ALL_TABLE_CLASSES:
+                table_name = table.__name__
+                query = f'SELECT MAX("{KEY_NAME}") FROM "{table_name}"'
+                cur.execute(query)
+                res = cur.fetchone()
+                max_id = res[0] + 1 if res is not None and res[0] is not None else 0
+                result[table_name] = max_id
+
+                if do_update:
+                    # For SQLite, update the sqlite_sequence table
+                    # Set seq to max_id so next autoincrement will be max_id + 1
+
+                    # Check if the table exists in sqlite_sequence
+                    cur.execute(
+                        "SELECT seq FROM sqlite_sequence WHERE name = ?", (table_name,)
+                    )
+                    seq_res = cur.fetchone()
+
+                    if seq_res is not None:
+                        # Update existing sequence entry
+                        cur.execute(
+                            "UPDATE sqlite_sequence SET seq = ? WHERE name = ?",
+                            (max_id, table_name),
+                        )
+                    else:
+                        # Insert new sequence entry (table may not have autoincrement entries yet)
+                        cur.execute(
+                            "INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)",
+                            (table_name, max_id),
+                        )
+
+                    # Verify the update worked by checking the sequence value
+                    cur.execute(
+                        "SELECT seq FROM sqlite_sequence WHERE name = ?", (table_name,)
+                    )
+                    verify_res = cur.fetchone()
+                    new_seq_value = verify_res[0] if verify_res is not None else None
+
+                    # For SQLite, we expect the sequence value to be set to max_id
+                    # The next autoincrement will then be max_id + 1
+                    if new_seq_value is None or new_seq_value < max_id:
+                        raise ValueError(
+                            f"Sequence for table {table_name} did not update properly. "
+                            f"Expected at least {max_id}, got {new_seq_value}"
+                        )
+        finally:
+            cur.close()
+
+    else:
+        raise ValueError(
+            f"Unsupported database connection type: {type(conn).__name__}. "
+            "Only PostgreSQL (psycopg2) and SQLite (sqlite3) are supported."
+        )
+
     return result
 
 
@@ -293,9 +364,12 @@ if __name__ == "__main__":
                 all_objects.extend(extract_scenario(scenario_id, session))
 
             # Get the alembic version
-            with session.connection().connection.driver_connection.cursor() as cur:  # type: ignore
+            cur = session.connection().connection.driver_connection.cursor()  # type: ignore
+            try:
                 cur.execute("SELECT * FROM alembic_version")
                 alembic_version_str = cur.fetchone()[0]
+            finally:
+                cur.close()
 
             # Create a dictionary with the alembic version and the objects
             to_dump = {"alembic_version": alembic_version_str, "objects": all_objects}

@@ -28,20 +28,90 @@ Releases of the package will be made available on [https://pypi.org/](https://py
 - minor releases (e.g. `1.0.0` to `1.1.0`) are backwards compatible feature additions, with the schema changes being optional
 - major releases (e.g. `1.0.0` to `2.0.0`) are backwards incompatible changes, with the schema changes being mandatory
 
-Supported database backends are
+Supported database backends are:
 
+- **[SpatiaLite](https://www.gaia-gis.it/fossil/libspatialite/)** (recommended for local development and examples)
+  - Requires `libspatialite` installation and `SPATIALITE_LIBRARY_PATH` environment variable
+  - No separate database server required - uses local SQLite files
+  - Ideal for development, testing, and smaller deployments
 - [PostgreSQL](https://www.postgresql.org) with the [PostGIS](https://postgis.net/) extension (`CREATE EXTENSION postgis;`)
   and `btree_gist` (`CREATE EXTENSION btree_gist;`)
+  - Recommended for multi-user scenarios
+  - Requires separate PostgreSQL server instance
 
 ### Usage
 
 This package is not expected to be used directly. It is a dependency of the `eflips-*` packages.
 
 This package utilizes GIS extensions through [GeoAlchemy](https://geoalchemy-2.readthedocs.io/en/latest/index.html).
-However, we are not handling geometry on the python side in any special way. When developing a paclage that uses `eflips-model`, you will probably additionally
+However, we are not handling geometry on the python side in any special way. When developing a package that uses `eflips-model`, you will probably additionally
 need [Shapely](https://shapely.readthedocs.io/en/stable/manual.html)
 and [pyProj](https://pyproj4.github.io/pyproj/stable/), which are not pure python packages and require additional
 dependencies to be installed on the system.
+
+#### Engine Creation
+
+**Important**: Unlike standard SQLAlchemy usage, do **not** use `sqlalchemy.create_engine()` directly. Instead, use `eflips.model.create_engine()`:
+
+```python
+from eflips.model import create_engine
+
+# Correct way to create an engine in this project
+engine = create_engine("sqlite:///./eflips_example.db")
+
+# Do NOT use:
+# import sqlalchemy
+# engine = sqlalchemy.create_engine(...)  # This will not work with SpatiaLite
+```
+
+The `eflips.model.create_engine()` function is an overridden version that automatically loads the SpatiaLite extension when using SQLite databases. This is essential for the spatial functionality to work correctly.
+
+#### Database Setup
+
+##### SpatiaLite Setup (Recommended for Development)
+
+1. **Install SpatiaLite:**
+
+   **macOS (with Homebrew):**
+   ```bash
+   brew install libspatialite
+   export SPATIALITE_LIBRARY_PATH="/opt/homebrew/Cellar/libspatialite/5.1.0_1/lib/mod_spatialite.dylib"
+   ```
+
+   **Ubuntu:**
+   ```bash
+   sudo apt update
+   sudo apt install libspatialite7 libspatialite-dev spatialite-bin
+   export SPATIALITE_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/mod_spatialite.so"
+   ```
+
+2. **Set DATABASE_URL:**
+   ```bash
+   export DATABASE_URL=sqlite:///./eflips_example.db
+   ```
+
+3. **Create engine and initialize database:**
+   ```python
+   from eflips.model import create_engine
+   
+   engine = create_engine("sqlite:///./eflips_example.db")
+   # SpatiaLite extension will be automatically loaded
+   ```
+
+##### PostgreSQL Setup (For Multi-User environments)
+
+1. Install PostgreSQL with PostGIS and btree_gist extensions
+2. Set DATABASE_URL:
+   ```bash
+   export DATABASE_URL=postgresql://user:pass@hostname:port/dbname
+   ```
+
+3. **Create engine:**
+   ```python
+   from eflips.model import create_engine
+   
+   engine = create_engine("postgresql://user:pass@hostname:port/dbname")
+   ```
 
 #### Schema updates
 
@@ -59,7 +129,11 @@ To apply the migration scripts, execute the following command in the root direct
 
 ```bash
 cd eflips/model
-export DATABASE_URL=postgresql://user:pass@hostname:port/dbname # Change to your database URL
+# For SpatiaLite:
+export DATABASE_URL=sqlite:///./eflips_example.db
+# OR for PostgreSQL:
+export DATABASE_URL=postgresql://user:pass@hostname:port/dbname
+
 alembic upgrade head
 ```
 
@@ -74,8 +148,13 @@ We use [pytest](https://docs.pytest.org/en/stable/) for testing. The tests are l
 ---
  
 ```bash
-# Change to your database URL
+# For SpatiaLite (recommended for testing):
+export DATABASE_URL=sqlite:///./test_eflips.db
+export SPATIALITE_LIBRARY_PATH="/path/to/mod_spatialite.so"  # See setup instructions above
+
+# OR for PostgreSQL:
 export DATABASE_URL=postgresql://user:pass@hostname:port/dbname 
+
 pytest
 ```
 
@@ -118,7 +197,7 @@ doing everything it says blindly).
 
 ## Usage Example
 
-In [examples](examples/) a well-documented (german-language) [Jupyter](https://jupyter.org/) notebook can be found that explains how all pieces of the data structure fit together using the SQLAlchemy Implementation. See its [README](examples/simple_scenario_and_depot_creation_de/README.md) for details.
+In [examples](examples/) a well-documented (german-language) [Jupyter](https://jupyter.org/) notebook can be found that explains how all pieces of the data structure fit together using the SQLAlchemy Implementation. The examples use **SpatiaLite by default** for easy setup without requiring a separate database server. Remember to use `eflips.model.create_engine()` instead of `sqlalchemy.create_engine()` in your code. See its [README](examples/simple_scenario_and_depot_creation_de/README.md) for details.
 
 ## License
 
@@ -127,5 +206,3 @@ This project is licensed under the AGPLv3 license - see the [LICENSE](LICENSE.md
 ## Funding Notice
 
 This code was developed as part of the project [eBus2030+](https://www.eflip.de/) funded by the Federal German Ministry for Digital and Transport (BMDV) under grant number 03EMF0402.
-
-

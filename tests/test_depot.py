@@ -6,7 +6,7 @@ import pytest
 import sqlalchemy
 from shapely.geometry import Polygon, Point, box
 from sqlalchemy.exc import IntegrityError
-
+from geoalchemy2.shape import from_shape
 from eflips.model import (
     Area,
     AreaType,
@@ -30,7 +30,7 @@ class TestDepot(TestGeneral):
             scenario=scenario,
             name="Test Station 1",
             name_short="TS1",
-            geom="POINT(0 0 0)",
+            geom=from_shape(Point(0, 0), srid=4326),
             is_electrified=False,
         )
         session.add(station)
@@ -295,7 +295,7 @@ class TestProcess(TestGeneral):
         session.commit()
 
         # test invalid process with negative duration and power
-        with pytest.raises(sqlalchemy.exc.IntegrityError):
+        with pytest.raises(ValueError, match="Duration must be non-negative"):
             process = Process(
                 name="Test Process number 4",
                 scenario=scenario,
@@ -341,7 +341,7 @@ class TestGeography(TestGeneral):
             scenario=scenario,
             name="Geo Station",
             name_short="GS",
-            geom="POINT(13.4050 52.5200 0)",  # Berlin coordinates
+            geom=from_shape(Point(13.4050, 52.5200), srid=4326),  # Berlin coordinates
             is_electrified=False,
         )
         session.add(station)
