@@ -49,6 +49,23 @@ need [Shapely](https://shapely.readthedocs.io/en/stable/manual.html)
 and [pyProj](https://pyproj4.github.io/pyproj/stable/), which are not pure python packages and require additional
 dependencies to be installed on the system.
 
+#### Engine Creation
+
+**Important**: Unlike standard SQLAlchemy usage, do **not** use `sqlalchemy.create_engine()` directly. Instead, use `eflips.model.create_engine()`:
+
+```python
+from eflips.model import create_engine
+
+# Correct way to create an engine in this project
+engine = create_engine("sqlite:///./eflips_example.db")
+
+# Do NOT use:
+# import sqlalchemy
+# engine = sqlalchemy.create_engine(...)  # This will not work with SpatiaLite
+```
+
+The `eflips.model.create_engine()` function is an overridden version that automatically loads the SpatiaLite extension when using SQLite databases. This is essential for the spatial functionality to work correctly.
+
 #### Database Setup
 
 ##### SpatiaLite Setup (Recommended for Development)
@@ -73,12 +90,27 @@ dependencies to be installed on the system.
    export DATABASE_URL=sqlite:///./eflips_example.db
    ```
 
+3. **Create engine and initialize database:**
+   ```python
+   from eflips.model import create_engine
+   
+   engine = create_engine("sqlite:///./eflips_example.db")
+   # SpatiaLite extension will be automatically loaded
+   ```
+
 ##### PostgreSQL Setup (For Multi-User environments)
 
 1. Install PostgreSQL with PostGIS and btree_gist extensions
 2. Set DATABASE_URL:
    ```bash
    export DATABASE_URL=postgresql://user:pass@hostname:port/dbname
+   ```
+
+3. **Create engine:**
+   ```python
+   from eflips.model import create_engine
+   
+   engine = create_engine("postgresql://user:pass@hostname:port/dbname")
    ```
 
 #### Schema updates
@@ -165,7 +197,7 @@ doing everything it says blindly).
 
 ## Usage Example
 
-In [examples](examples/) a well-documented (german-language) [Jupyter](https://jupyter.org/) notebook can be found that explains how all pieces of the data structure fit together using the SQLAlchemy Implementation. The examples use **SpatiaLite by default** for easy setup without requiring a separate database server. See its [README](examples/simple_scenario_and_depot_creation_de/README.md) for details.
+In [examples](examples/) a well-documented (german-language) [Jupyter](https://jupyter.org/) notebook can be found that explains how all pieces of the data structure fit together using the SQLAlchemy Implementation. The examples use **SpatiaLite by default** for easy setup without requiring a separate database server. Remember to use `eflips.model.create_engine()` instead of `sqlalchemy.create_engine()` in your code. See its [README](examples/simple_scenario_and_depot_creation_de/README.md) for details.
 
 ## License
 
