@@ -91,6 +91,10 @@ class Scenario(Base):
     """A name for the scenario."""
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the scenario."""
+
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    """An optional description for the scenario. Can be used to store additional information about the scenario."""
+
     created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True).with_variant(TimeStampWithTz, "sqlite"),
         server_default=func.now(),
@@ -133,12 +137,14 @@ class Scenario(Base):
             "project_duration": 20,
             "interest_rate": 0.04,
             "inflation_rate": 0.02,
-            "staff_cost": null,
-            "energy_cost": null,
-            "maint_cost": null,
-            "maint_infr_cost": null,
-            "taxes": 0,
-            "insurance": 0,
+            "staff_cost": 30.0,
+            "energy_cost": 0.18,
+            "fuel_cost": 1.5,
+            "maint_cost": 0.07,
+            "maint_cost_diesel": 0.14,
+            "maint_infr_cost": 1000.0,
+            "taxes": 0.0,
+            "insurance": 0.0,
             "pef_general": 0.02,
             "pef_wages": 0.025,
             "pef_energy": 0.038,
@@ -170,7 +176,7 @@ class Scenario(Base):
     - pef_insurance: Insurance price escalation factor (value between 0 and 1)
 
     Note: Cost parameters can be set to null if not applicable to the analysis.
-    Price escalation factors represent annual cost increase rates above inflation.
+    Price escalation factors represent annual cost increase rates, not relative to inflation.
     """
 
     # Most of the other columns (all except the Assoc-Tables for many-to-many relationships) have the scenario_id
@@ -743,6 +749,7 @@ class VehicleType(Base):
         {
             "useful_life":14,
             "procurement_cost": null,
+            "procurement_cost_diesel": null,
             "cost_escalation": 0.02
         }
         """,
@@ -864,7 +871,7 @@ class BatteryType(Base):
         {
             "useful_life":7,
             "procurement_cost": null,
-            "cost_escalation":-0.03
+            "cost_escalation": 0.01
         }
         """,
     )

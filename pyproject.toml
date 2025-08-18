@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-model"
-version = "10.0.0"
+version = "10.0.1"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
 	"Ludger Heide <ludger.heide@tu-berlin.de>",
