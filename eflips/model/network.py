@@ -118,8 +118,8 @@ class Route(Base):
         Geometry("LINESTRING", srid=4326), nullable=True
     )
     """
-    The shape of the route as a polyline. If set, the length of this shape must be equal to :attr:`Route.distance`.
-    Use WGS84 coordinates (EPSG:4326).
+    The shape of the route as a polyline. If set, the length of this shape must be within 50 meters of
+    :attr:`Route.distance`. Use WGS84 coordinates (EPSG:4326).
     """
 
     trips: Mapped[List["Trip"]] = relationship("Trip", back_populates="route")
@@ -144,8 +144,8 @@ class Route(Base):
     __table_args__ = (
         CheckConstraint("distance > 0", name="route_distance_positive_check"),
         CheckConstraint(
-            "geom IS NULL OR ST_Length(geom, True) = distance",
-            name="route_shape_distance_check",
+            "geom IS NULL OR ABS(ST_Length(geom, True) - distance) < 50",
+            name="route_distance_within_50m_tolerance_check",
         ),
     )
 
