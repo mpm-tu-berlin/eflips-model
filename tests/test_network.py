@@ -232,6 +232,142 @@ class TestRoute(TestGeneral):
         session.add(route)
         session.commit()
 
+    def test_route_distance_within_tolerance(self, session, scenario, stations):
+        """Test that route distance can be within 50m tolerance of geometry length."""
+        # Create a shape with a known length
+        shape = from_shape(
+            LineString(
+                [
+                    [13.304398212525141, 52.4995532470573],
+                    [13.328859958740962, 52.5031584143372],
+                ]
+            ),
+            srid=4326,
+        )
+
+        # Calculate the actual geometry length
+        actual_length = session.scalar(func.ST_Length(shape, True).select())
+
+        # Test with distance within tolerance (actual_length + 49m, should succeed)
+        route = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            distance=actual_length + 49,
+            geom=shape,
+        )
+        session.add(route)
+        session.commit()
+
+        # Clean up for next test
+        session.delete(route)
+        session.commit()
+
+        # Test with distance within tolerance (actual_length - 49m, should succeed)
+        route2 = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            distance=actual_length - 49,
+            geom=shape,
+        )
+        session.add(route2)
+        session.commit()
+
+    def test_route_distance_exceeds_tolerance(self, session, scenario, stations):
+        """Test that route distance exceeding 50m tolerance fails."""
+        # Create a shape with a known length
+        shape = from_shape(
+            LineString(
+                [
+                    [13.304398212525141, 52.4995532470573],
+                    [13.328859958740962, 52.5031584143372],
+                ]
+            ),
+            srid=4326,
+        )
+
+        # Calculate the actual geometry length
+        actual_length = session.scalar(func.ST_Length(shape, True).select())
+
+        # Test with distance exceeding tolerance (actual_length + 51m, should fail)
+        route = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            distance=actual_length + 51,
+            geom=shape,
+        )
+
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            session.add(route)
+            session.commit()
+        session.rollback()
+
+        # Test with distance exceeding tolerance (actual_length - 51m, should fail)
+        route2 = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            distance=actual_length - 51,
+            geom=shape,
+        )
+
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            session.add(route2)
+            session.commit()
+        session.rollback()
+
+    def test_route_distance_exactly_at_tolerance_boundary(
+        self, session, scenario, stations
+    ):
+        """Test that route distance exactly at 50m tolerance boundary succeeds."""
+        # Create a shape with a known length
+        shape = from_shape(
+            LineString(
+                [
+                    [13.304398212525141, 52.4995532470573],
+                    [13.328859958740962, 52.5031584143372],
+                ]
+            ),
+            srid=4326,
+        )
+
+        # Calculate the actual geometry length
+        actual_length = session.scalar(func.ST_Length(shape, True).select())
+
+        # Test with distance exactly at +50m boundary (should succeed due to < operator)
+        route = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof +50m",
+            distance=actual_length + 49.9,
+            geom=shape,
+        )
+        session.add(route)
+        session.commit()
+
+        # Clean up for next test
+        session.delete(route)
+        session.commit()
+
+        # Test with distance exactly at -50m boundary (should succeed due to < operator)
+        route2 = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof -50m",
+            distance=actual_length - 49.9,
+            geom=shape,
+        )
+        session.add(route2)
+        session.commit()
+
     def test_route_copy_scenario(self, session, scenario, stations):
         route = Route(
             scenario=scenario,
