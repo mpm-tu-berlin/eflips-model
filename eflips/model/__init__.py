@@ -1,7 +1,24 @@
 import importlib
 
 import sqlalchemy
+from geoalchemy2 import load_spatialite
+from sqlalchemy.event import listen
 from sqlalchemy.orm import DeclarativeBase
+
+
+def create_engine(url: str, **kwargs) -> sqlalchemy.Engine:  # type: ignore
+    """
+    Create a SQLAlchemy engine with the given URL and options. This is an overridden version of the
+    `sqlalchemy.create_engine` function that loads the Spatialite extension if sqlite is used.
+
+    :param url: The database URL to connect to.
+    :param kwargs: Additional keyword arguments for the engine creation.
+    :return: A SQLAlchemy engine instance.
+    """
+    engine = sqlalchemy.create_engine(url, **kwargs)
+    if url.startswith("sqlite://"):
+        listen(engine, "connect", load_spatialite)
+    return engine
 
 
 class Base(DeclarativeBase):
