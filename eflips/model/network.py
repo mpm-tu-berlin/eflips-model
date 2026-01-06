@@ -1,6 +1,9 @@
 from enum import auto, Enum as PyEnum
+from enum import auto, Enum as PyEnum
 from typing import Any, List, TYPE_CHECKING, Dict
 
+import sqlalchemy.orm.session
+from eflips.model import Base
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     BigInteger,
@@ -12,11 +15,10 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Text,
+    func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects import postgresql
-
-from eflips.model import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
     from eflips.model import Scenario, Trip, StopTime, Event, Depot, ChargingPointType
@@ -143,6 +145,48 @@ class Route(Base):
 
     def __repr__(self) -> str:
         return f"<Route(id={self.id}, name={self.name})>"
+
+    @staticmethod
+    def calculate_length(
+        session: sqlalchemy.orm.session.Session, linestring: str
+    ) -> float:
+        """
+        Portable function to calculate the length of a linestring in meters. It adapts to whether the database uses
+        PostGIS or SpatiaLite.
+
+        :param session: An open SQLAlchemy session.
+        :param linestring: A string representation of a linestring in WKT format.
+        :return: The length of the linestring in meters.
+        """
+        if session.bind is None or session.bind.dialect is None:
+            raise ValueError("Session is not bound to a database.")
+        if session.bind.dialect.name == "postgresql":
+            # PostGIS
+            distance = session.query(
+                func.ST_Length(func.ST_GeomFromText(linestring, 4326), True)
+            ).scalar()
+            if distance is None:
+                raise ValueError("Failed to calculate length of linestring.")
+            assert isinstance(distance, float), "Distance should be a float."
+            return distance
+        elif session.bind.dialect.name == "sqlite":
+            # SpatiaLite
+            # The linestring must be in WKT format, and be a "LINESTRING"
+            if "LINESTRING" not in linestring:
+                raise ValueError(
+                    "The linestring must be in WKT format and be a 'LINESTRING'."
+                )
+            distance = session.query(
+                func.GeodesicLength(func.ST_GeomFromText(linestring, 4326))
+            ).scalar()
+            if distance is None:
+                raise ValueError("Failed to calculate length of linestring.")
+            assert isinstance(distance, float), "Distance should be a float."
+            return distance
+        else:
+            raise NotImplementedError(
+                f"Length calculation not implemented for dialect {session.bind.dialect.name}"
+            )
 
 
 @event.listens_for(Route, "before_insert")
