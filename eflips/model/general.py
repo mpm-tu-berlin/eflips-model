@@ -625,6 +625,11 @@ class Scenario(Base):
         return f"<Scenario(id={self.id}, name={self.name})>"
 
 
+class DrivetrainType(PyEnum):
+    ICE = auto()
+    BEV = auto()
+
+
 class VehicleType(Base):
     """
     This class represents a vehicle type, containing the technical parameters shared by all vehicles of this type.
@@ -762,6 +767,8 @@ class VehicleType(Base):
     - "cost_escalation": Annual cost escalation factor as a decimal between 0 and 1 (e.g., 0.02 represents 2% annual cost increase)
     """
 
+
+    drivetrain_type: Mapped[DrivetrainType] = mapped_column(SqlEnum(DrivetrainType, native_enum=False), nullable=True)
     consumption: Mapped[float] = mapped_column(Float, nullable=True)
     """
     The vehicle's energy consumption in kWh/km. This is used to calculate the energy consumption of a trip. Can

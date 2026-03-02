@@ -34,6 +34,7 @@ from eflips.model import (
     VehicleClass,
     VehicleType,
     ConsistencyWarning,
+    DrivetrainType,
 )
 from eflips.model.general import (
     AssocVehicleTypeVehicleClass,
@@ -641,6 +642,7 @@ class TestVehicleType(TestGeneral):
                 "lifetime": 6,
                 "cost_escalation_factor": -0.03,
             },
+            drivetrain_type=DrivetrainType.BEV
         )
         session.add(vehicle_type)
         session.commit()
