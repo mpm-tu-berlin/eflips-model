@@ -378,7 +378,10 @@ class Scenario(Base):
             area_id_map = id_maps["areas"]
             process_id_map = id_maps["processes"]
             for entry_area_process in session.query(AssocAreaProcess):
-                if entry_area_process.area_id in area_id_map and entry_area_process.process_id in process_id_map:
+                if (
+                    entry_area_process.area_id in area_id_map
+                    and entry_area_process.process_id in process_id_map
+                ):
                     session.add(
                         AssocAreaProcess(
                             area_id=area_id_map[entry_area_process.area_id].id,

@@ -81,7 +81,6 @@ class TestGeneral:
 
         session.add(temperatures)
 
-
         # Add a vehicle type with a battery type
         vehicle_type = VehicleType(
             scenario=scenario,
@@ -429,16 +428,14 @@ class TestScenario(TestGeneral):
             for r in sample_content.rotations
         }
         original_trip_stop_time_ids = {
-            t.id: {st.id for st in t.stop_times}
-            for t in sample_content.trips
+            t.id: {st.id for st in t.stop_times} for t in sample_content.trips
         }
         original_vehicle_type_vehicle_class_ids = {
             vt.id: {vc.id for vc in vt.vehicle_classes}
             for vt in sample_content.vehicle_types
         }
         original_route_assoc_ids = {
-            r.id: {a.id for a in r.assoc_route_stations}
-            for r in sample_content.routes
+            r.id: {a.id for a in r.assoc_route_stations} for r in sample_content.routes
         }
 
         cloned_scenario = sample_content.clone(session)
@@ -456,19 +453,25 @@ class TestScenario(TestGeneral):
         for trip in sample_content.trips:
             assert trip.scenario_id == sample_content.id
             assert trip.id in original_trip_ids
-            assert {st.id for st in trip.stop_times} == original_trip_stop_time_ids[trip.id]
+            assert {st.id for st in trip.stop_times} == original_trip_stop_time_ids[
+                trip.id
+            ]
 
         # In-memory: original vehicle_types and their vehicle_classes are unchanged
         for vehicle_type in sample_content.vehicle_types:
             assert vehicle_type.scenario_id == sample_content.id
             assert vehicle_type.id in original_vehicle_type_ids
-            assert {vc.id for vc in vehicle_type.vehicle_classes} == original_vehicle_type_vehicle_class_ids[vehicle_type.id]
+            assert {
+                vc.id for vc in vehicle_type.vehicle_classes
+            } == original_vehicle_type_vehicle_class_ids[vehicle_type.id]
 
         # In-memory: original routes and their assoc_route_stations are unchanged
         for route in sample_content.routes:
             assert route.scenario_id == sample_content.id
             assert route.id in original_route_ids
-            assert {a.id for a in route.assoc_route_stations} == original_route_assoc_ids[route.id]
+            assert {
+                a.id for a in route.assoc_route_stations
+            } == original_route_assoc_ids[route.id]
 
         # In-memory: cloned rotations have correct non-empty trips (verifies expire() worked)
         for rotation in cloned_scenario.rotations:
@@ -578,8 +581,12 @@ class TestScenario(TestGeneral):
 
         # Make sure the rotation - trip are correctly cloned
 
-        old_rotations = session.query(Rotation).filter(Rotation.scenario == sample_content).all()
-        cloned_rotations = session.query(Rotation).filter(Rotation.scenario == cloned_scenario).all()
+        old_rotations = (
+            session.query(Rotation).filter(Rotation.scenario == sample_content).all()
+        )
+        cloned_rotations = (
+            session.query(Rotation).filter(Rotation.scenario == cloned_scenario).all()
+        )
         old_rotations.sort(key=lambda r: r.trips[0].departure_time)
         cloned_rotations.sort(key=lambda r: r.trips[0].departure_time)
         for old_rotation, cloned_rotation in zip(old_rotations, cloned_rotations):
@@ -589,10 +596,6 @@ class TestScenario(TestGeneral):
                 assert old_trip.trip_type == cloned_trip.trip_type
                 assert old_trip.scenario_id == sample_content.id
                 assert cloned_trip.scenario_id == cloned_scenario.id
-
-
-
-
 
         # Make sure the new depot's station entry points to the cloned scenario
         # And the old depot's station entry points to the old scenario
