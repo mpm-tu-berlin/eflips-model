@@ -319,7 +319,7 @@ class Scenario(Base):
 
         # Build table-name → id_map lookup for the FK fixup pass.
         table_to_id_map: Dict[str, Dict[int, Any]] = {
-            owned_relationship.mapper.local_table.name: id_maps[owned_relationship.key]
+            owned_relationship.mapper.local_table.name: id_maps[owned_relationship.key]  # type: ignore[attr-defined]
             for owned_relationship in owned_relationships
         }
 
@@ -341,7 +341,9 @@ class Scenario(Base):
                                         setattr(
                                             copied_obj,
                                             column_attr.key,
-                                            table_to_id_map[target_table][original_val].id,
+                                            table_to_id_map[target_table][
+                                                original_val
+                                            ].id,
                                         )
 
             # Manual: pure junction tables have no scenario_id and are not reachable
@@ -350,17 +352,20 @@ class Scenario(Base):
             # VehicleType <-> VehicleClass
             vt_id_map = id_maps["vehicle_types"]
             vc_id_map = id_maps["vehicle_classes"]
-            for entry in session.query(AssocVehicleTypeVehicleClass):
-                if entry.vehicle_type_id in vt_id_map and entry.vehicle_class_id in vc_id_map:
+            for entry_vt_vc in session.query(AssocVehicleTypeVehicleClass):
+                if (
+                    entry_vt_vc.vehicle_type_id in vt_id_map
+                    and entry_vt_vc.vehicle_class_id in vc_id_map
+                ):
                     session.add(
                         AssocVehicleTypeVehicleClass(
-                            vehicle_type_id=vt_id_map[entry.vehicle_type_id].id,
-                            vehicle_class_id=vc_id_map[entry.vehicle_class_id].id,
+                            vehicle_type_id=vt_id_map[entry_vt_vc.vehicle_type_id].id,
+                            vehicle_class_id=vc_id_map[entry_vt_vc.vehicle_class_id].id,
                         )
                     )
                 elif (
-                    entry.vehicle_type_id not in vt_id_map
-                    and entry.vehicle_class_id not in vc_id_map
+                    entry_vt_vc.vehicle_type_id not in vt_id_map
+                    and entry_vt_vc.vehicle_class_id not in vc_id_map
                 ):
                     pass
                 else:
@@ -372,15 +377,18 @@ class Scenario(Base):
             # Area <-> Process
             area_id_map = id_maps["areas"]
             process_id_map = id_maps["processes"]
-            for entry in session.query(AssocAreaProcess):
-                if entry.area_id in area_id_map and entry.process_id in process_id_map:
+            for entry_area_process in session.query(AssocAreaProcess):
+                if entry_area_process.area_id in area_id_map and entry_area_process.process_id in process_id_map:
                     session.add(
                         AssocAreaProcess(
-                            area_id=area_id_map[entry.area_id].id,
-                            process_id=process_id_map[entry.process_id].id,
+                            area_id=area_id_map[entry_area_process.area_id].id,
+                            process_id=process_id_map[entry_area_process.process_id].id,
                         )
                     )
-                elif entry.area_id not in area_id_map and entry.process_id not in process_id_map:
+                elif (
+                    entry_area_process.area_id not in area_id_map
+                    and entry_area_process.process_id not in process_id_map
+                ):
                     pass
                 else:
                     raise ValueError(
