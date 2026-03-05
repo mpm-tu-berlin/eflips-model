@@ -18,6 +18,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     func,
+    inspect as sa_inspect,
     Integer,
     Text,
     UniqueConstraint,
@@ -28,7 +29,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import (
-    make_transient,
     Mapped,
     mapped_column,
     relationship,
@@ -262,21 +262,26 @@ class Scenario(Base):
     """A list of charging point types."""
 
     @staticmethod
-    def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> None:
+    def _copy_object(obj: Any, session: Session, scenario: "Scenario") -> Any:
         """
-        Internal helper function to copy an SQLAlchemy object and attach it to a new scenario.
-        :param obj: An SQLAlchemy object. Must have an 'id' attribute and a 'scenario' attribute.
-        :param session: an SQLAlchemy session.
-        :return: The new object, attached to the new scenario.
+        Creates a copy of an SQLAlchemy object and attaches it to a new scenario.
+        The original object is left completely unchanged in the session.
+        :param obj: An SQLAlchemy object. Must have an 'id' and a 'scenario_id' attribute.
+        :param session: An SQLAlchemy session.
+        :param scenario: The new scenario to attach the copy to.
+        :return: The newly created copy, pending in the session.
         """
-        make_transient(obj)
-        obj.id = None
-        obj.scenario = scenario
-        session.add(obj)
+        obj_copy = type(obj)()
+        for column_attr in sa_inspect(type(obj)).column_attrs:
+            if column_attr.key not in ("id", "scenario_id"):
+                setattr(obj_copy, column_attr.key, getattr(obj, column_attr.key))
+        obj_copy.scenario = scenario
+        session.add(obj_copy)
+        return obj_copy
 
     def clone(self, session: Session) -> "Scenario":
         """
-        Creates a copy of the scenario, including all vehicle types and battery types.
+        Creates a copy of the scenario, including all owned objects.
         :param session: The database session.
         :return: The copy of the scenario.
         """
@@ -289,300 +294,136 @@ class Scenario(Base):
         scenario_copy.parent = self
         session.add(scenario_copy)
 
-        # For each type of relationship, we need to
-        # Go through the entries on the "many" side of the relationship
-        # Create a copy of the entry
-        # Add it, flush it, note the new id in the id_map
+        # All ONETOMANY relationships on Scenario that point to owned (non-self-referential) entities.
+        owned_relationships = [
+            owned_relationship
+            for owned_relationship in sa_inspect(Scenario).relationships
+            if owned_relationship.direction.name == "ONETOMANY"
+            and owned_relationship.mapper.class_ is not Scenario
+            and not owned_relationship.viewonly
+        ]
+
+        # Phase 1: copy every owned object.
+        # id_maps[relationship_key] = {original_id: copied_object}
+        id_maps: Dict[str, Dict[int, Any]] = {}
         with session.no_autoflush:
-            vehicle_type_id_map: Dict[int, VehicleType] = {}
-            for vehicle_type in self.vehicle_types:
-                original_id = vehicle_type.id
-                self._copy_object(vehicle_type, session, scenario_copy)
-                vehicle_type_id_map[original_id] = vehicle_type
+            for owned_relationship in owned_relationships:
+                id_map: Dict[int, Any] = {}
+                for obj in getattr(self, owned_relationship.key):
+                    obj_copy = self._copy_object(obj, session, scenario_copy)
+                    id_map[obj.id] = obj_copy
+                id_maps[owned_relationship.key] = id_map
 
-            battery_type_id_map: Dict[int, BatteryType] = {}
-            for battery_type in self.battery_types:
-                original_id = battery_type.id
-                self._copy_object(battery_type, session, scenario_copy)
-                battery_type_id_map[original_id] = battery_type
-
-            vehicle_id_map: Dict[int, Vehicle] = {}
-            for vehicle in self.vehicles:
-                original_id = vehicle.id
-                self._copy_object(vehicle, session, scenario_copy)
-                vehicle_id_map[original_id] = vehicle
-
-            vehicle_class_id_map: Dict[int, VehicleClass] = {}
-            for vehicle_class in self.vehicle_classes:
-                original_id = vehicle_class.id
-                self._copy_object(vehicle_class, session, scenario_copy)
-                vehicle_class_id_map[original_id] = vehicle_class
-
-            line_id_map: Dict[int, "Line"] = {}
-            for line in self.lines:
-                original_id = line.id
-                self._copy_object(line, session, scenario_copy)
-                line_id_map[original_id] = line
-
-            route_id_map: Dict[int, "Route"] = {}
-            for route in self.routes:
-                original_id = route.id
-                self._copy_object(route, session, scenario_copy)
-                route_id_map[original_id] = route
-
-            station_id_map: Dict[int, "Station"] = {}
-            for station in self.stations:
-                original_id = station.id
-                self._copy_object(station, session, scenario_copy)
-                station_id_map[original_id] = station
-
-            route_station_id_map: Dict[int, "AssocRouteStation"] = {}
-            for route_station in self.assoc_route_stations:
-                original_id = route_station.id
-                self._copy_object(route_station, session, scenario_copy)
-                route_station_id_map[original_id] = route_station
-
-            stop_time_id_map: Dict[int, "StopTime"] = {}
-            for stop_time in self.stop_times:
-                original_id = stop_time.id
-                self._copy_object(stop_time, session, scenario_copy)
-                stop_time_id_map[original_id] = stop_time
-
-            trip_id_map: Dict[int, "Trip"] = {}
-            for trip in self.trips:
-                original_id = trip.id
-                self._copy_object(trip, session, scenario_copy)
-                trip_id_map[original_id] = trip
-
-            rotation_id_map: Dict[int, "Rotation"] = {}
-            for rotation in self.rotations:
-                original_id = rotation.id
-                self._copy_object(rotation, session, scenario_copy)
-                rotation_id_map[original_id] = rotation
-
-            event_id_map: Dict[int, "Event"] = {}
-            for event in self.events:
-                original_id = event.id
-                self._copy_object(event, session, scenario_copy)
-                event_id_map[original_id] = event
-
-            consumption_id_map: Dict[int, "ConsumptionLut"] = {}
-            for consumption in self.consumption_luts:
-                original_id = consumption.id
-                self._copy_object(consumption, session, scenario_copy)
-                consumption_id_map[original_id] = consumption
-
-            temperatures_id_map: Dict[int, "Temperatures"] = {}
-            for temperatures in self.temperatures:
-                original_id = temperatures.id
-                self._copy_object(temperatures, session, scenario_copy)
-                temperatures_id_map[original_id] = temperatures
-
-            depot_id_map: Dict[int, "Depot"] = {}
-            for depot in self.depots:
-                original_id = depot.id
-                self._copy_object(depot, session, scenario_copy)
-                depot_id_map[original_id] = depot
-
-            plan_id_map: Dict[int, "Plan"] = {}
-            for plan in self.plans:
-                original_id = plan.id
-                self._copy_object(plan, session, scenario_copy)
-                plan_id_map[original_id] = plan
-
-            area_id_map: Dict[int, "Area"] = {}
-            for area in self.areas:
-                original_id = area.id
-                self._copy_object(area, session, scenario_copy)
-                area_id_map[original_id] = area
-
-            process_id_map: Dict[int, "Process"] = {}
-            for process in self.processes:
-                original_id = process.id
-                self._copy_object(process, session, scenario_copy)
-                process_id_map[original_id] = process
-
-            assoc_plan_process_id_map: Dict[int, "AssocPlanProcess"] = {}
-            for assoc_plan_process in self.assoc_plan_processes:
-                original_id = assoc_plan_process.id
-                self._copy_object(assoc_plan_process, session, scenario_copy)
-                assoc_plan_process_id_map[original_id] = assoc_plan_process
-
-            charging_point_type_id_map: Dict[int, "ChargingPointType"] = {}
-            for charging_point_type in self.charging_point_types:
-                original_id = charging_point_type.id
-                self._copy_object(charging_point_type, session, scenario_copy)
-                charging_point_type_id_map[original_id] = charging_point_type
-
-        # This assigns the new ids
+        # Assign new IDs to all pending copies.
         session.flush()
 
-        # Now that we have copied every object, we need to update their relationships among each other.
-        # At least for those that have foreign keys.
+        # Build table-name → id_map lookup for the FK fixup pass.
+        table_to_id_map: Dict[str, Dict[int, Any]] = {
+            owned_relationship.mapper.local_table.name: id_maps[owned_relationship.key]  # type: ignore[attr-defined]
+            for owned_relationship in owned_relationships
+        }
+
+        # Phase 2: rewrite every FK column on every copied object so that it points
+        # to the new copy rather than the original.  Autoflush is suppressed so that
+        # partially-updated objects are never sent to the DB mid-pass.
+        with session.no_autoflush:
+            for owned_relationship in owned_relationships:
+                for copied_obj in getattr(scenario_copy, owned_relationship.key):
+                    for column_attr in owned_relationship.mapper.column_attrs:
+                        if column_attr.key in ("id", "scenario_id"):
+                            continue
+                        for column in column_attr.columns:
+                            for foreign_key in column.foreign_keys:
+                                target_table = foreign_key.column.table.name
+                                if target_table in table_to_id_map:
+                                    original_val = getattr(copied_obj, column_attr.key)
+                                    if original_val is not None:
+                                        setattr(
+                                            copied_obj,
+                                            column_attr.key,
+                                            table_to_id_map[target_table][
+                                                original_val
+                                            ].id,
+                                        )
+
+            # Manual: pure junction tables have no scenario_id and are not reachable
+            # via the generic loop above; their rows must be queried and re-created.
+
+            # VehicleType <-> VehicleClass
+            vt_id_map = id_maps["vehicle_types"]
+            vc_id_map = id_maps["vehicle_classes"]
+            for entry_vt_vc in session.query(AssocVehicleTypeVehicleClass):
+                if (
+                    entry_vt_vc.vehicle_type_id in vt_id_map
+                    and entry_vt_vc.vehicle_class_id in vc_id_map
+                ):
+                    session.add(
+                        AssocVehicleTypeVehicleClass(
+                            vehicle_type_id=vt_id_map[entry_vt_vc.vehicle_type_id].id,
+                            vehicle_class_id=vc_id_map[entry_vt_vc.vehicle_class_id].id,
+                        )
+                    )
+                elif (
+                    entry_vt_vc.vehicle_type_id not in vt_id_map
+                    and entry_vt_vc.vehicle_class_id not in vc_id_map
+                ):
+                    pass
+                else:
+                    raise ValueError(
+                        "There exists an association between a vehicle type and a vehicle class"
+                        " that is not in the scenario."
+                    )
+
+            # Area <-> Process
+            area_id_map = id_maps["areas"]
+            process_id_map = id_maps["processes"]
+            for entry_area_process in session.query(AssocAreaProcess):
+                if (
+                    entry_area_process.area_id in area_id_map
+                    and entry_area_process.process_id in process_id_map
+                ):
+                    session.add(
+                        AssocAreaProcess(
+                            area_id=area_id_map[entry_area_process.area_id].id,
+                            process_id=process_id_map[entry_area_process.process_id].id,
+                        )
+                    )
+                elif (
+                    entry_area_process.area_id not in area_id_map
+                    and entry_area_process.process_id not in process_id_map
+                ):
+                    pass
+                else:
+                    raise ValueError(
+                        "There exists an association between an area and a process"
+                        " that is not in the scenario."
+                    )
+
+        session.flush()
+
+        # Several before_update event listeners access relationship collections during
+        # the flush.  If the collection's FK fixup and the parent object's FK fixup land
+        # in the same flush, the listener may lazy-load the collection before its FK
+        # updates are committed, caching a stale empty list.  Expire the affected
+        # attributes so the correct objects are loaded on first access by the caller.
+        #
+        # Rotation.before_update  → accesses rotation.trips
+        #   (Trip.rotation_id updated in same flush)
+        # Trip.before_update      → accesses trip.stop_times
+        #   (StopTime.trip_id updated in same flush)
+        # VehicleType.before_update → accesses vehicle_type.vehicle_classes
+        #   (AssocVehicleTypeVehicleClass rows added in same flush)
+        # Route.before_update     → accesses route.assoc_route_stations
+        #   (AssocRouteStation.route_id updated in same flush)
+        for rotation in scenario_copy.rotations:
+            session.expire(rotation, ["trips"])
+        for trip in scenario_copy.trips:
+            session.expire(trip, ["stop_times"])
         for vehicle_type in scenario_copy.vehicle_types:
-            if vehicle_type.battery_type_id is not None:
-                vehicle_type.battery_type_id = battery_type_id_map[
-                    vehicle_type.battery_type_id
-                ].id
-
-        # BatteryType has no foreign keys, so we don't need to update anything there.
-
-        # Vehicle <-> VehicleType
-        for vehicle in scenario_copy.vehicles:
-            vehicle.vehicle_type_id = vehicle_type_id_map[vehicle.vehicle_type_id].id
-
-        # VehicleType <-> VehicleClass many-to-many by updating the association table
-        for entry in session.query(AssocVehicleTypeVehicleClass):
-            if (
-                entry.vehicle_type_id in vehicle_type_id_map
-                and entry.vehicle_class_id in vehicle_class_id_map
-            ):
-                new_entry = AssocVehicleTypeVehicleClass(
-                    vehicle_type_id=vehicle_type_id_map[entry.vehicle_type_id].id,
-                    vehicle_class_id=vehicle_class_id_map[entry.vehicle_class_id].id,
-                )
-                session.add(new_entry)
-            elif (
-                entry.vehicle_type_id not in vehicle_type_id_map
-                and entry.vehicle_class_id not in vehicle_class_id_map
-            ):
-                pass
-            else:
-                raise ValueError(
-                    "There exists an association between a vehicle type and a vehicle class that is not in"
-                    " the scenario."
-                )
-
-        # Line <-> Route
+            session.expire(vehicle_type, ["vehicle_classes"])
         for route in scenario_copy.routes:
-            if route.line_id is not None:
-                route.line_id = line_id_map[route.line_id].id
+            session.expire(route, ["assoc_route_stations"])
 
-        # Route <-> Station
-        for route in scenario_copy.routes:
-            route.departure_station_id = station_id_map[route.departure_station_id].id
-            route.arrival_station_id = station_id_map[route.arrival_station_id].id
-
-        # Route <-> AssocRouteStation <-> Station
-        for route_station in scenario_copy.assoc_route_stations:
-            if route_station.route.scenario_id != scenario_copy.id:
-                route_station.route_id = route_id_map[route_station.route_id].id
-            route_station.station_id = station_id_map[route_station.station_id].id
-
-        # Station <-> StopTime <-> Trip
-        for stop_time in scenario_copy.stop_times:
-            stop_time.station_id = station_id_map[stop_time.station_id].id
-            stop_time.trip_id = trip_id_map[stop_time.trip_id].id
-
-        # Station <-> ChargingPointType
-        for station in scenario_copy.stations:
-            if station.charging_point_type_id is not None:
-                station.charging_point_type_id = charging_point_type_id_map[
-                    station.charging_point_type_id
-                ].id
-
-        # Trip <-> Route
-        for trip in scenario_copy.trips:
-            trip.route_id = route_id_map[trip.route_id].id
-
-        # Trip <-> Rotation
-        for trip in scenario_copy.trips:
-            trip.rotation_id = rotation_id_map[trip.rotation_id].id
-
-        # Rotation <-> VehicleType
-        for rotation in scenario_copy.rotations:
-            rotation.vehicle_type_id = vehicle_type_id_map[rotation.vehicle_type_id].id
-
-        # Rotation <-> Vehicle
-        for rotation in scenario_copy.rotations:
-            if rotation.vehicle_id is not None:
-                rotation.vehicle_id = vehicle_id_map[rotation.vehicle_id].id
-
-        # Event <-> VehicleType
-        for event in scenario_copy.events:
-            if event.vehicle_type_id is not None:
-                event.vehicle_type_id = vehicle_type_id_map[event.vehicle_type_id].id
-
-        # Event <-> Vehicle
-        for event in scenario_copy.events:
-            if event.vehicle_id is not None:
-                event.vehicle_id = vehicle_id_map[event.vehicle_id].id
-
-        # Event <-> Trip
-        for event in scenario_copy.events:
-            if event.trip_id is not None:
-                event.trip_id = trip_id_map[event.trip_id].id
-
-        # Event <-> Station
-        for event in scenario_copy.events:
-            if event.station_id is not None:
-                event.station_id = station_id_map[event.station_id].id
-
-        # Event <-> Area
-        for event in scenario_copy.events:
-            if event.area_id is not None:
-                event.area_id = area_id_map[event.area_id].id
-
-        # Consumption <-> VehicleType
-        for consumption in scenario_copy.consumption_luts:
-            consumption.vehicle_class_id = vehicle_class_id_map[
-                consumption.vehicle_class_id
-            ].id
-
-        # Depot <-> Plan
-        for depot in scenario_copy.depots:
-            depot.default_plan_id = plan_id_map[depot.default_plan_id].id
-
-        # Depot <-> Station
-        for depot in scenario_copy.depots:
-            depot.station_id = station_id_map[depot.station_id].id
-
-        # Area <-> Depot, VehicleType
-        for area in scenario_copy.areas:
-            area.depot_id = depot_id_map[area.depot_id].id
-            area.vehicle_type_id = (
-                vehicle_type_id_map[area.vehicle_type_id].id
-                if area.vehicle_type_id is not None
-                else None
-            )
-        # Area <-> ChargingPointType
-        for area in scenario_copy.areas:
-            if area.charging_point_type_id is not None:
-                area.charging_point_type_id = charging_point_type_id_map[
-                    area.charging_point_type_id
-                ].id
-
-        # Process <-> Area is a many-to-many relationship, so we need to update the association table
-        for area_process_entry in session.query(AssocAreaProcess):
-            if (
-                area_process_entry.area_id in area_id_map
-                and area_process_entry.process_id in process_id_map
-            ):
-                new_area_process_entry = AssocAreaProcess(
-                    area_id=area_id_map[area_process_entry.area_id].id,
-                    process_id=process_id_map[area_process_entry.process_id].id,
-                )
-                session.add(area_process_entry)
-            elif (
-                area_process_entry.area_id not in area_id_map
-                and area_process_entry.process_id not in process_id_map
-            ):
-                pass
-            else:
-                raise ValueError(
-                    "There exists an association between an area and a process that is not in"
-                    " the scenario."
-                )
-
-        # AssocPlanProcess <-> Plan, Process
-        # For some reason, here we need to create new AssocPlanProcess for the old scenario objects instead of just
-        # updating the ids.
-        for plan_process_entry in scenario_copy.assoc_plan_processes:
-            plan_process_entry.plan_id = plan_id_map[plan_process_entry.plan_id].id
-            plan_process_entry.process_id = process_id_map[
-                plan_process_entry.process_id
-            ].id
-        session.flush()
         return scenario_copy
 
     def select_rotations(

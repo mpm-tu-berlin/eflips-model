@@ -73,11 +73,13 @@ class TestGeneral:
             name="Test Temperatures",
             use_only_time=False,
             datetimes=[
-                datetime.min.replace(tzinfo=timezone.utc),
-                datetime.max.replace(tzinfo=timezone.utc),
+                datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                datetime(2020, 1, 2, 0, 0, 0, tzinfo=timezone.utc),
             ],
             data=[20, 20],
         )
+
+        session.add(temperatures)
 
         # Add a vehicle type with a battery type
         vehicle_type = VehicleType(
@@ -106,7 +108,7 @@ class TestGeneral:
         )
         session.add(vehicle_type)
 
-        # Add a vehicle type with a consumptio table
+        # Add a vehicle type with a consumption table
         vehicle_type = VehicleType(
             scenario=scenario,
             name="Test Vehicle Type 2",
@@ -415,7 +417,99 @@ class TestScenario(TestGeneral):
                 }
             )
 
+        # Snapshot original in-memory state before cloning
+        original_trip_ids = {t.id for t in sample_content.trips}
+        original_rotation_ids = {r.id for r in sample_content.rotations}
+        original_route_ids = {r.id for r in sample_content.routes}
+        original_vehicle_type_ids = {vt.id for vt in sample_content.vehicle_types}
+
+        original_rotation_trip_ids = {
+            r.id: [t.id for t in sorted(r.trips, key=lambda t: t.departure_time)]
+            for r in sample_content.rotations
+        }
+        original_trip_stop_time_ids = {
+            t.id: {st.id for st in t.stop_times} for t in sample_content.trips
+        }
+        original_vehicle_type_vehicle_class_ids = {
+            vt.id: {vc.id for vc in vt.vehicle_classes}
+            for vt in sample_content.vehicle_types
+        }
+        original_route_assoc_ids = {
+            r.id: {a.id for a in r.assoc_route_stations} for r in sample_content.routes
+        }
+
         cloned_scenario = sample_content.clone(session)
+
+        # In-memory: original rotations and their trips are unchanged
+        for rotation in sample_content.rotations:
+            assert rotation.scenario_id == sample_content.id
+            assert rotation.id in original_rotation_ids
+            actual_trip_ids = [
+                t.id for t in sorted(rotation.trips, key=lambda t: t.departure_time)
+            ]
+            assert actual_trip_ids == original_rotation_trip_ids[rotation.id]
+
+        # In-memory: original trips and their stop_times are unchanged
+        for trip in sample_content.trips:
+            assert trip.scenario_id == sample_content.id
+            assert trip.id in original_trip_ids
+            assert {st.id for st in trip.stop_times} == original_trip_stop_time_ids[
+                trip.id
+            ]
+
+        # In-memory: original vehicle_types and their vehicle_classes are unchanged
+        for vehicle_type in sample_content.vehicle_types:
+            assert vehicle_type.scenario_id == sample_content.id
+            assert vehicle_type.id in original_vehicle_type_ids
+            assert {
+                vc.id for vc in vehicle_type.vehicle_classes
+            } == original_vehicle_type_vehicle_class_ids[vehicle_type.id]
+
+        # In-memory: original routes and their assoc_route_stations are unchanged
+        for route in sample_content.routes:
+            assert route.scenario_id == sample_content.id
+            assert route.id in original_route_ids
+            assert {
+                a.id for a in route.assoc_route_stations
+            } == original_route_assoc_ids[route.id]
+
+        # In-memory: cloned rotations have correct non-empty trips (verifies expire() worked)
+        for rotation in cloned_scenario.rotations:
+            assert rotation.scenario_id == cloned_scenario.id
+            assert len(rotation.trips) > 0
+            for trip in rotation.trips:
+                assert trip.scenario_id == cloned_scenario.id
+                assert trip.id not in original_trip_ids
+
+        # In-memory: cloned trips have correct non-empty stop_times
+        for trip in cloned_scenario.trips:
+            assert trip.scenario_id == cloned_scenario.id
+            assert len(trip.stop_times) > 0
+            for stop_time in trip.stop_times:
+                assert stop_time.scenario_id == cloned_scenario.id
+
+        # In-memory: cloned vehicle_types have correct vehicle_classes
+        total_original_vc_count = sum(
+            len(ids) for ids in original_vehicle_type_vehicle_class_ids.values()
+        )
+        total_cloned_vc_count = sum(
+            len(vt.vehicle_classes) for vt in cloned_scenario.vehicle_types
+        )
+        assert total_cloned_vc_count == total_original_vc_count
+        for vehicle_type in cloned_scenario.vehicle_types:
+            assert vehicle_type.scenario_id == cloned_scenario.id
+            assert vehicle_type.id not in original_vehicle_type_ids
+            for vc in vehicle_type.vehicle_classes:
+                assert vc.scenario_id == cloned_scenario.id
+
+        # In-memory: cloned routes have correct non-empty assoc_route_stations
+        for route in cloned_scenario.routes:
+            assert route.scenario_id == cloned_scenario.id
+            assert route.id not in original_route_ids
+            assert len(route.assoc_route_stations) > 0
+            for assoc in route.assoc_route_stations:
+                assert assoc.scenario_id == cloned_scenario.id
+
         # Make sure that all links are also pointing back to the cloned scenario
         assert cloned_scenario.id == 2
         for vehicle_type in cloned_scenario.vehicle_types:
@@ -484,6 +578,24 @@ class TestScenario(TestGeneral):
             assert stop_time.scenario == cloned_scenario
             assert stop_time.trip.scenario == cloned_scenario
             assert stop_time.station.scenario == cloned_scenario
+
+        # Make sure the rotation - trip are correctly cloned
+
+        old_rotations = (
+            session.query(Rotation).filter(Rotation.scenario == sample_content).all()
+        )
+        cloned_rotations = (
+            session.query(Rotation).filter(Rotation.scenario == cloned_scenario).all()
+        )
+        old_rotations.sort(key=lambda r: r.trips[0].departure_time)
+        cloned_rotations.sort(key=lambda r: r.trips[0].departure_time)
+        for old_rotation, cloned_rotation in zip(old_rotations, cloned_rotations):
+            for old_trip, cloned_trip in zip(old_rotation.trips, cloned_rotation.trips):
+                assert old_trip.departure_time == cloned_trip.departure_time
+                assert old_trip.arrival_time == cloned_trip.arrival_time
+                assert old_trip.trip_type == cloned_trip.trip_type
+                assert old_trip.scenario_id == sample_content.id
+                assert cloned_trip.scenario_id == cloned_scenario.id
 
         # Make sure the new depot's station entry points to the cloned scenario
         # And the old depot's station entry points to the old scenario
