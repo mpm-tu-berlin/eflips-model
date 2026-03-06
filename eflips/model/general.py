@@ -466,6 +466,12 @@ class Scenario(Base):
         return f"<Scenario(id={self.id}, name={self.name})>"
 
 
+class EnergySource(PyEnum):
+    BATTERY_ELECTRIC = auto()
+    DIESEL = auto()
+    HYDROGEN = auto()
+
+
 class VehicleType(Base):
     """
     This class represents a vehicle type, containing the technical parameters shared by all vehicles of this type.
@@ -500,6 +506,13 @@ class VehicleType(Base):
     """A name for the vehicle type."""
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """An optional short name for the vehicle type."""
+
+    energy_source: Mapped[EnergySource] = mapped_column(
+        SqlEnum(EnergySource, native_enum=False),
+        nullable=False,
+        default=EnergySource.BATTERY_ELECTRIC,
+    )
+    """The energy/propulsion source of the vehicle type."""
 
     battery_capacity: Mapped[float] = mapped_column(Float)
     """The battery capacity in kWh. This refers to the usable capacity, not the total capacity."""
