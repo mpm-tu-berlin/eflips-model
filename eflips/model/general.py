@@ -609,11 +609,24 @@ class VehicleType(Base):
         """,
     )
     """The TCO (Total Cost of Ownership) parameters of the vehicle type.
-    
+
     This parameter stores a JSON object containing the following fields:
     - "useful_life": The expected operational lifetime of the vehicle in years
     - "procurement_cost": The initial purchase cost per vehicle
     - "cost_escalation": Annual cost escalation factor as a decimal between 0 and 1 (e.g., 0.02 represents 2% annual cost increase)
+    """
+
+    lca_params: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        nullable=True,
+    )
+    """LCA (Life Cycle Assessment) parameters for this vehicle type.
+
+    Stored as a JSON object. Use ``eflips.lca.VehicleTypeLcaParams.from_dict()``
+    to deserialise and ``.to_dict()`` to serialise. Contains chassis, motor,
+    use-phase, and maintenance emission factors.
+
+    See the eflips-lca design document for the full schema.
     """
 
     consumption: Mapped[float] = mapped_column(Float, nullable=True)
@@ -713,10 +726,8 @@ class BatteryType(Base):
     specific_mass: Mapped[float] = mapped_column(Float)
     """The specific mass of the battery in kg/kWh. Relative to gross (not net) capacity."""
 
-    chemistry: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite")  # type: ignore
-    )
-    """The chemistry of the battery. Stored as a JSON object, defined by eflips-LCA"""
+    chemistry: Mapped[str] = mapped_column(Text)
+    """The chemistry of the battery as a plain string, e.g. ``'LFP'`` or ``'NMC622'``."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
@@ -741,10 +752,20 @@ class BatteryType(Base):
     - procurement_cost (float or null): The initial acquisition cost per kWh 
       of battery capacity.
     
-    - cost_escalation (float): The annual rate of cost change as a decimal 
+    - cost_escalation (float): The annual rate of cost change as a decimal
       between 0 and 1. Negative values indicate cost reductions over time,
-      while positive values indicate cost increases. For example, -0.03 
+      while positive values indicate cost increases. For example, -0.03
       represents a 3% annual cost reduction.
+    """
+
+    lca_params: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        nullable=True,
+    )
+    """LCA parameters for this battery type.
+
+    Stored as a JSON object. Use ``eflips.lca.BatteryTypeLcaParams.from_dict()``
+    to deserialise. Contains emission factors per kg and battery lifetime.
     """
 
     def __repr__(self) -> str:
@@ -1450,6 +1471,18 @@ class ChargingPointType(Base):
     - cost_escalation (float): Annual cost escalation rate as a decimal.
       Should be between 0.0 and 1.0 (e.g., 0.02 = 2% annual increase).
       Used to project future operational costs over the useful life period.
+    """
+
+    lca_params: Mapped[Dict[str, Any]] = mapped_column(
+        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        nullable=True,
+    )
+    """LCA parameters for this charging point type.
+
+    Stored as a JSON object. Use
+    ``eflips.lca.ChargingPointTypeLcaParams.from_dict()`` to deserialise.
+    Contains control/power/user unit emission factors, concrete parameters,
+    and infrastructure lifetime.
     """
 
     stations: Mapped[List["Station"]] = relationship(
