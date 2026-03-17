@@ -19,8 +19,8 @@ from uuid import UUID
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from sqlalchemy import inspect
-from sqlalchemy.orm import Session, RelationshipDirection
-from sqlalchemy.orm.state import InstanceState
+from sqlalchemy.orm import Mapper
+from sqlalchemy.orm import Query, Session, RelationshipDirection
 
 from eflips.model import Base, create_engine, Scenario
 from eflips.model.depot import Area, AssocAreaProcess
@@ -76,7 +76,7 @@ COMPUTED_FIELDS: dict[str, dict[str, Callable[[dict[str, Any]], Any]]] = {
 }
 
 
-def get_foreign_key_columns(mapper: InstanceState[Any]) -> set[str]:
+def get_foreign_key_columns(mapper: Mapper[Any]) -> set[str]:
     """
     Get column names that are foreign keys (with _id suffix).
 
@@ -356,7 +356,7 @@ def export_scenario_to_json(
         # Map class name for django-simba compatibility
         output_class_name = MODEL_NAME_MAPPING.get(class_name, class_name)
         assert hasattr(cls, "scenario_id")
-        query = session.query(cls).filter(cls.scenario_id == scenario_id)
+        query: Query[Any] = session.query(cls).filter(cls.scenario_id == scenario_id)
         objects = query.all()
         if objects:
             result[output_class_name] = [serialize_object(obj) for obj in objects]
