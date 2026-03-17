@@ -13,31 +13,34 @@ import os
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Callable
 from uuid import UUID
 
 from geoalchemy2 import WKBElement
 from geoalchemy2.shape import to_shape
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session, RelationshipDirection
+from sqlalchemy.orm.state import InstanceState
 
-from eflips.model import create_engine, Scenario
+from eflips.model import Base, create_engine, Scenario
+from eflips.model.depot import Area, AssocAreaProcess
+from eflips.model.general import AssocVehicleTypeVehicleClass, VehicleType
 from eflips.model.util.export import (
     ALL_CLASSES_WITH_SCENARIO_ID,
     ALL_PURE_ASSOC_CLASSES,
-    ALL_TABLE_CLASSES,
 )
-from eflips.model.depot import Area, AssocAreaProcess
-from eflips.model.general import AssocVehicleTypeVehicleClass, VehicleType
+
+# ---------------------------------------------------------------------------
+# django-simba compatibility constants
+# ---------------------------------------------------------------------------
 
 # Mapping from eflips-model class names to django-simba expected names
-MODEL_NAME_MAPPING = {
+MODEL_NAME_MAPPING: dict[str, str] = {
     "ConsumptionLut": "Consumption",
 }
 
 # Default values for fields that django-simba requires but eflips-model may have as null
-# Format: {class_name: {field_name: default_value}}
-FIELD_DEFAULTS = {
+FIELD_DEFAULTS: dict[str, dict[str, Any]] = {
     "VehicleType": {
         "length": 0.0,
         "width": 0.0,
@@ -49,8 +52,7 @@ FIELD_DEFAULTS = {
 }
 
 # Extra fields to add that django-simba expects but don't exist in eflips-model
-# Format: {class_name: {field_name: default_value}}
-EXTRA_FIELDS = {
+EXTRA_FIELDS: dict[str, dict[str, Any]] = {
     "Scenario": {
         "tco_result": None,
     },
@@ -60,8 +62,21 @@ EXTRA_FIELDS = {
     },
 }
 
+# Computed fields derived from serialized values
+# Format: {class_name: {field_name: callable(serialized_result) -> value}}
+COMPUTED_FIELDS: dict[str, dict[str, Callable[[dict[str, Any]], Any]]] = {
+    "Scenario": {
+        "scenario_type": lambda r: "SOURCE_FILE",
+    },
+    "VehicleType": {
+        "max_consumption": lambda r: 2 * r["consumption"]
+        if r.get("consumption") is not None
+        else None,
+    },
+}
 
-def get_foreign_key_columns(mapper) -> set:
+
+def get_foreign_key_columns(mapper: InstanceState[Any]) -> set[str]:
     """
     Get column names that are foreign keys (with _id suffix).
 
@@ -154,13 +169,12 @@ def convert_geometry_to_3d(wkt: str) -> str:
     return wkt
 
 
-def serialize_value(value: Any, column_type: Any = None) -> Any:
+def serialize_value(value: Any) -> Any:
     """
     Serialize a single value based on its type.
 
     Args:
         value: The value to serialize
-        column_type: Optional SQLAlchemy column type for additional context
 
     Returns:
         A JSON-serializable representation of the value
@@ -218,7 +232,7 @@ def serialize_value(value: Any, column_type: Any = None) -> Any:
     return str(value)
 
 
-def get_many_to_many_relationships(obj: Any) -> Dict[str, List[int]]:
+def get_many_to_many_relationships(obj: Base) -> dict[str, list[int]]:
     """
     Get many-to-many relationship data as lists of IDs.
 
@@ -247,7 +261,7 @@ def get_many_to_many_relationships(obj: Any) -> Dict[str, List[int]]:
     return result
 
 
-def serialize_object(obj: Any) -> Dict[str, Any]:
+def serialize_object(obj: Base) -> dict[str, Any]:
     """
     Serialize an SQLAlchemy object to a dict.
 
@@ -287,7 +301,7 @@ def serialize_object(obj: Any) -> Dict[str, Any]:
         ):
             output_name = column_name[:-3]  # Remove "_id" suffix
 
-        serialized_value = serialize_value(value, column.type)
+        serialized_value = serialize_value(value)
 
         # Apply default value if the field is None and has a configured default
         if serialized_value is None and output_name in field_defaults:
@@ -305,12 +319,17 @@ def serialize_object(obj: Any) -> Dict[str, Any]:
         if field_name not in result:
             result[field_name] = default_value
 
+    # Apply computed fields (may overwrite extra-field defaults)
+    computed_fields = COMPUTED_FIELDS.get(class_name, {})
+    for field_name, compute_fn in computed_fields.items():
+        result[field_name] = compute_fn(result)
+
     return result
 
 
 def export_scenario_to_json(
     scenario_id: int, session: Session
-) -> Dict[str, List[Dict[str, Any]]]:
+) -> dict[str, list[dict[str, Any]]]:
     """
     Export a scenario and all related objects to a JSON-compatible dict.
 
@@ -321,7 +340,7 @@ def export_scenario_to_json(
     Returns:
         A dict with class names as keys and lists of serialized objects as values
     """
-    result: Dict[str, List[Dict[str, Any]]] = {}
+    result: dict[str, list[dict[str, Any]]] = {}
 
     # Load the scenario
     scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one_or_none()
@@ -330,10 +349,6 @@ def export_scenario_to_json(
 
     # Add the scenario first
     result["Scenario"] = [serialize_object(scenario)]
-
-    # Manually set scenario_type to "SOURCE_FILE" as discussed with Paul (django-simba expects this field to
-    # determine how to handle the scenario)
-    result["Scenario"][0]["scenario_type"] = "SOURCE_FILE"
 
     # Load all objects with scenario_id
     for cls in ALL_CLASSES_WITH_SCENARIO_ID:
@@ -373,7 +388,7 @@ def export_scenario_to_json(
     return result
 
 
-def list_scenarios(session: Session, scenario_ids: List[int] | None = None) -> None:
+def list_scenarios(session: Session, scenario_ids: list[int] | None = None) -> None:
     """
     List available scenarios.
 
@@ -459,7 +474,7 @@ def main() -> None:
                 scenario_ids = [s.id for s in session.query(Scenario.id).all()]
 
             # Export each scenario and merge results
-            all_data: Dict[str, List[Dict[str, Any]]] = {}
+            all_data: dict[str, list[dict[str, Any]]] = {}
             for scenario_id in scenario_ids:
                 scenario_data = export_scenario_to_json(scenario_id, session)
                 for class_name, objects in scenario_data.items():
