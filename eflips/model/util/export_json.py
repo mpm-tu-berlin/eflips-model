@@ -22,7 +22,7 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import Query, Session, RelationshipDirection
 
-from eflips.model import Base, create_engine, Scenario
+from eflips.model import Base, create_engine, Scenario, Trip, TripType
 from eflips.model.depot import Area, AssocAreaProcess
 from eflips.model.general import AssocVehicleTypeVehicleClass, VehicleType
 from eflips.model.util.export import (
@@ -346,6 +346,17 @@ def export_scenario_to_json(
     scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one_or_none()
     if not scenario:
         raise ValueError(f"No scenario with ID {scenario_id} found.")
+
+    # Set sensible loaded_mass defaults for trips before export
+    session.query(Trip).filter(
+        Trip.scenario_id == scenario_id,
+        Trip.trip_type == TripType.EMPTY,
+    ).update({"loaded_mass": 0})
+    session.query(Trip).filter(
+        Trip.scenario_id == scenario_id,
+        Trip.trip_type == TripType.PASSENGER,
+        Trip.loaded_mass == None,
+    ).update({"loaded_mass": 1360})
 
     # Add the scenario first
     result["Scenario"] = [serialize_object(scenario)]
