@@ -17,6 +17,7 @@ from eflips.model import (
     Base,
     BatteryType,
     Depot,
+    EnergySource,
     Event,
     EventType,
     Line,
@@ -753,9 +754,43 @@ class TestVehicleType(TestGeneral):
                 "lifetime": 6,
                 "cost_escalation_factor": -0.03,
             },
+            energy_source=EnergySource.BATTERY_ELECTRIC,
         )
         session.add(vehicle_type)
         session.commit()
+
+    def test_create_vehicle_type_energy_source(self, session, scenario):
+        # Test each enum value round-trips correctly
+        for es in EnergySource:
+            vehicle_type = VehicleType(
+                name=f"Test {es.name}",
+                scenario=scenario,
+                battery_capacity=100,
+                charging_curve=[[0, 150], [1, 150]],
+                opportunity_charging_capable=True,
+                consumption=1,
+                energy_source=es,
+            )
+            session.add(vehicle_type)
+            session.commit()
+
+            loaded = session.get(VehicleType, vehicle_type.id)
+            assert loaded.energy_source == es
+
+        # Test default value (BATTERY_ELECTRIC) when not specified
+        vehicle_type = VehicleType(
+            name="Test Default Energy Source",
+            scenario=scenario,
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+            consumption=1,
+        )
+        session.add(vehicle_type)
+        session.commit()
+
+        loaded = session.get(VehicleType, vehicle_type.id)
+        assert loaded.energy_source == EnergySource.BATTERY_ELECTRIC
 
     def test_create_vehicle_type_invalid_battery_capacity(self, scenario, session):
         for battery_capacity in [-100, 0]:

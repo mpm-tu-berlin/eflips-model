@@ -169,6 +169,7 @@ from eflips.model.general import Scenario as Scenario
 from eflips.model.general import Vehicle as Vehicle
 from eflips.model.general import VehicleClass as VehicleClass
 from eflips.model.general import VehicleType as VehicleType
+from eflips.model.general import EnergySource as EnergySource
 from eflips.model.general import Event as Event
 from eflips.model.general import EventType as EventType
 from eflips.model.general import (
