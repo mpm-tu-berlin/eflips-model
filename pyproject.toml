@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-model"
-version = "10.1.0"
+version = "11.0.0"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
 	"Ludger Heide <ludger.heide@tu-berlin.de>",
@@ -17,7 +17,7 @@ include= ["LICENSE.md"]
 python = "^3.10"
 sqlalchemy = "^2.0.23"
 alembic = "^1.12.1"
-geoalchemy2 = "^0.14.2"
+geoalchemy2 = "^0.15.0"
 psycopg2-binary = "^2.9.10"
 pandas = "^2.2.0"
 numpy = "^2.2.0"

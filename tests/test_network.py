@@ -6,7 +6,6 @@ import sqlalchemy
 from geoalchemy2.shape import from_shape, to_shape
 from shapely import Point
 from shapely.geometry.linestring import LineString
-from sqlalchemy import func
 
 from eflips.model import (
     AssocRouteStation,
@@ -38,14 +37,14 @@ class TestRoute(TestGeneral):
         """Create two stations for testing."""
         station_1 = Station(
             name="Hauptbahnhof",
-            geom=from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326),
+            geom=from_shape(Point(13.304398212525141, 52.4995532470573, 0), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
         session.add(station_1)
         station_2 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728, 0), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -99,8 +98,8 @@ class TestRoute(TestGeneral):
         shape = from_shape(
             LineString(
                 [
-                    [13.304398212525141, 52.4995532470573],
-                    [13.328859958740962, 52.50315841433728],
+                    [13.304398212525141, 52.4995532470573, 0],
+                    [13.328859958740962, 52.50315841433728, 0],
                 ]
             ),
             srid=4326,
@@ -136,27 +135,60 @@ class TestRoute(TestGeneral):
         loaded_wkt = loaded_geom.wkt
         assert loaded_wkt == wkt
 
+    def test_create_route_z_roundtrip(self, session, scenario, stations):
+        """A LINESTRINGZ inserted via shapely must come back with Z preserved
+        on both PostGIS and SpatiaLite."""
+        line = Line(name="1 - Hauptbahnhof <-> Hauptfriedhof", scenario=scenario)
+        session.add(line)
+
+        linestring = LineString(
+            [
+                (13.304398212525141, 52.4995532470573, 17.0),
+                (13.328859958740962, 52.5031584143372, 42.5),
+            ]
+        )
+        route = Route(
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            name_short="1A",
+            headsign="Hauptfriedhof",
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            line=line,
+            distance=Route.calculate_length(session, linestring.wkt),
+            geom=from_shape(linestring, srid=4326),
+            scenario=scenario,
+        )
+        session.add(route)
+        session.commit()
+
+        rid = route.id
+        session.expire_all()
+        loaded_ls = to_shape(session.get(Route, rid).geom)
+        assert loaded_ls.has_z
+        assert [c[2] for c in loaded_ls.coords] == [17.0, 42.5]
+
     def test_create_route_invalid_dimension(self, session, scenario, stations):
+        """A 2D LineString must be rejected by the LINESTRINGZ column on
+        PostGIS. SpatiaLite does not enforce the dimension constraint so it
+        is skipped there."""
         if session.bind.dialect.name == "sqlite":
-            pytest.skip("SQLite does not support protecting against invalid dimensions")
+            pytest.skip("SQLite does not enforce the column's dimension")
 
         line = Line(name="1 - Hauptbahnhof <-> Hauptfriedhof", scenario=scenario)
         session.add(line)
         session.commit()
 
-        # Create a shape
-        shape = from_shape(
+        shape_2d = from_shape(
             LineString(
                 [
-                    [13.304398212525141, 52.4995532470573, 0],
-                    [13.328859958740962, 52.5031584143372, 0],
+                    [13.304398212525141, 52.4995532470573],
+                    [13.328859958740962, 52.5031584143372],
                 ]
             ),
             srid=4326,
         )
-        wkt = shapely.from_wkb(bytes(shape.data)).wkt
 
-        with pytest.raises(sqlalchemy.exc.DataError):
+        with pytest.raises((sqlalchemy.exc.DataError, sqlalchemy.exc.InternalError)):
             route = Route(
                 name="1 Hauptbahnhof -> Hauptfriedhof",
                 name_short="1A",
@@ -164,15 +196,11 @@ class TestRoute(TestGeneral):
                 departure_station=stations[0],
                 arrival_station=stations[1],
                 line=line,
-                distance=0,
-                geom=shape,
+                distance=100,
+                geom=shape_2d,
                 scenario=scenario,
             )
             session.add(route)
-
-            # Use GeoAlchemy to calculate the distance
-            with session.no_autoflush:
-                route.distance = Route.calculate_length(session, wkt)
             session.commit()
 
     def test_create_route_invalid_distance(self, session, scenario, stations):
@@ -202,24 +230,19 @@ class TestRoute(TestGeneral):
         session.commit()
 
     def test_route_invalid_distance(self, session, scenario, stations):
-        # Create a shape
-        shape = from_shape(
-            LineString(
-                [
-                    [13.304398212525141, 52.4995532470573],
-                    [13.328859958740962, 52.5031584143372],
-                ]
-            ),
-            srid=4326,
+        linestring = LineString(
+            [
+                (13.304398212525141, 52.4995532470573, 0),
+                (13.328859958740962, 52.5031584143372, 0),
+            ]
         )
-
         route = Route(
             scenario=scenario,
             departure_station=stations[0],
             arrival_station=stations[1],
             name="1 Hauptbahnhof -> Hauptfriedhof",
             distance=100,
-            geom=shape,
+            geom=from_shape(linestring, srid=4326),
         )
 
         with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -227,79 +250,52 @@ class TestRoute(TestGeneral):
             session.commit()
         session.rollback()
 
-        # Use GeoAlchemy to calculate the distance
-        route.distance = session.scalar(func.ST_Length(route.geom, True).select())
+        route.distance = Route.calculate_length(session, linestring.wkt)
         session.add(route)
         session.commit()
 
-    def test_route_distance_within_tolerance(self, session, scenario, stations):
-        """Test that route distance can be within 50m tolerance of geometry length."""
-        # Create a shape with a known length
-        shape = from_shape(
-            LineString(
-                [
-                    [13.304398212525141, 52.4995532470573],
-                    [13.328859958740962, 52.5031584143372],
-                ]
-            ),
-            srid=4326,
+    @pytest.mark.parametrize("delta", [49, -49])
+    def test_route_distance_within_tolerance(self, session, scenario, stations, delta):
+        """Route distance within 50m of the geometry length must succeed,
+        on both sides of the tolerance window."""
+        linestring = LineString(
+            [
+                (13.304398212525141, 52.4995532470573, 0),
+                (13.328859958740962, 52.5031584143372, 0),
+            ]
         )
+        actual_length = Route.calculate_length(session, linestring.wkt)
 
-        # Calculate the actual geometry length
-        actual_length = session.scalar(func.ST_Length(shape, True).select())
-
-        # Test with distance within tolerance (actual_length + 49m, should succeed)
         route = Route(
             scenario=scenario,
             departure_station=stations[0],
             arrival_station=stations[1],
             name="1 Hauptbahnhof -> Hauptfriedhof",
-            distance=actual_length + 49,
-            geom=shape,
+            distance=actual_length + delta,
+            geom=from_shape(linestring, srid=4326),
         )
         session.add(route)
         session.commit()
 
-        # Clean up for next test
-        session.delete(route)
-        session.commit()
-
-        # Test with distance within tolerance (actual_length - 49m, should succeed)
-        route2 = Route(
-            scenario=scenario,
-            departure_station=stations[0],
-            arrival_station=stations[1],
-            name="1 Hauptbahnhof -> Hauptfriedhof",
-            distance=actual_length - 49,
-            geom=shape,
+    @pytest.mark.parametrize("delta", [51, -51])
+    def test_route_distance_exceeds_tolerance(self, session, scenario, stations, delta):
+        """Route distance more than 50m off the geometry length must fail,
+        on both sides of the tolerance window."""
+        linestring = LineString(
+            [
+                (13.304398212525141, 52.4995532470573, 0),
+                (13.328859958740962, 52.5031584143372, 0),
+            ]
         )
-        session.add(route2)
-        session.commit()
+        actual_length = Route.calculate_length(session, linestring.wkt)
 
-    def test_route_distance_exceeds_tolerance(self, session, scenario, stations):
-        """Test that route distance exceeding 50m tolerance fails."""
-        # Create a shape with a known length
-        shape = from_shape(
-            LineString(
-                [
-                    [13.304398212525141, 52.4995532470573],
-                    [13.328859958740962, 52.5031584143372],
-                ]
-            ),
-            srid=4326,
-        )
-
-        # Calculate the actual geometry length
-        actual_length = session.scalar(func.ST_Length(shape, True).select())
-
-        # Test with distance exceeding tolerance (actual_length + 51m, should fail)
         route = Route(
             scenario=scenario,
             departure_station=stations[0],
             arrival_station=stations[1],
             name="1 Hauptbahnhof -> Hauptfriedhof",
-            distance=actual_length + 51,
-            geom=shape,
+            distance=actual_length + delta,
+            geom=from_shape(linestring, srid=4326),
         )
 
         with pytest.raises(sqlalchemy.exc.IntegrityError):
@@ -307,65 +303,29 @@ class TestRoute(TestGeneral):
             session.commit()
         session.rollback()
 
-        # Test with distance exceeding tolerance (actual_length - 51m, should fail)
-        route2 = Route(
-            scenario=scenario,
-            departure_station=stations[0],
-            arrival_station=stations[1],
-            name="1 Hauptbahnhof -> Hauptfriedhof",
-            distance=actual_length - 51,
-            geom=shape,
-        )
-
-        with pytest.raises(sqlalchemy.exc.IntegrityError):
-            session.add(route2)
-            session.commit()
-        session.rollback()
-
+    @pytest.mark.parametrize("delta", [49.9, -49.9])
     def test_route_distance_exactly_at_tolerance_boundary(
-        self, session, scenario, stations
+        self, session, scenario, stations, delta
     ):
-        """Test that route distance exactly at 50m tolerance boundary succeeds."""
-        # Create a shape with a known length
-        shape = from_shape(
-            LineString(
-                [
-                    [13.304398212525141, 52.4995532470573],
-                    [13.328859958740962, 52.5031584143372],
-                ]
-            ),
-            srid=4326,
+        """Route distance just inside the 50m tolerance window must succeed
+        (the constraint uses a strict ``<`` comparison)."""
+        linestring = LineString(
+            [
+                (13.304398212525141, 52.4995532470573, 0),
+                (13.328859958740962, 52.5031584143372, 0),
+            ]
         )
+        actual_length = Route.calculate_length(session, linestring.wkt)
 
-        # Calculate the actual geometry length
-        actual_length = session.scalar(func.ST_Length(shape, True).select())
-
-        # Test with distance exactly at +50m boundary (should succeed due to < operator)
         route = Route(
             scenario=scenario,
             departure_station=stations[0],
             arrival_station=stations[1],
-            name="1 Hauptbahnhof -> Hauptfriedhof +50m",
-            distance=actual_length + 49.9,
-            geom=shape,
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            distance=actual_length + delta,
+            geom=from_shape(linestring, srid=4326),
         )
         session.add(route)
-        session.commit()
-
-        # Clean up for next test
-        session.delete(route)
-        session.commit()
-
-        # Test with distance exactly at -50m boundary (should succeed due to < operator)
-        route2 = Route(
-            scenario=scenario,
-            departure_station=stations[0],
-            arrival_station=stations[1],
-            name="1 Hauptbahnhof -> Hauptfriedhof -50m",
-            distance=actual_length - 49.9,
-            geom=shape,
-        )
-        session.add(route2)
         session.commit()
 
     def test_route_copy_scenario(self, session, scenario, stations):
@@ -516,7 +476,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728, 0), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -548,7 +508,7 @@ class TestRoute(TestGeneral):
         )
         station_3 = Station(
             name="Hauptfriedhof",
-            geom=from_shape(Point(13.328859958740962, 52.50315841433728), srid=4326),
+            geom=from_shape(Point(13.328859958740962, 52.50315841433728, 0), srid=4326),
             scenario=scenario,
             is_electrified=False,
         )
@@ -663,7 +623,7 @@ class TestRoute(TestGeneral):
 
 class TestStation(TestGeneral):
     def test_create_station(self, session, scenario):
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326)
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 0), srid=4326)
         wkt = shapely.from_wkb(bytes(geom.data)).wkt
 
         # Create a simple station
@@ -682,13 +642,35 @@ class TestStation(TestGeneral):
         loaded_wkt = to_shape(station.geom).wkt
         assert loaded_wkt == wkt
 
-    def test_create_station_invalid_dimension(self, session, scenario):
-        if session.bind.dialect.name == "sqlite":
-            pytest.skip("SQLite does not support protecting against invalid dimensions")
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 0), srid=4326)
+    def test_create_station_z_roundtrip(self, session, scenario):
+        """A POINTZ inserted via shapely must come back with Z preserved on
+        both PostGIS and SpatiaLite."""
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 35.0), srid=4326)
+        station = Station(
+            name="Hauptbahnhof",
+            geom=geom,
+            scenario=scenario,
+            is_electrified=False,
+        )
+        session.add(station)
+        session.commit()
+        sid = station.id
+        session.expire_all()
 
-        # Create a simple station
-        with pytest.raises(sqlalchemy.exc.DataError):
+        loaded = session.get(Station, sid)
+        pt = to_shape(loaded.geom)
+        assert pt.has_z
+        assert pt.z == 35.0
+
+    def test_create_station_invalid_dimension(self, session, scenario):
+        """A 2D Point must be rejected by the POINTZ column on PostGIS.
+        SpatiaLite does not enforce the dimension constraint so it is
+        skipped there."""
+        if session.bind.dialect.name == "sqlite":
+            pytest.skip("SQLite does not enforce the column's dimension")
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326)
+
+        with pytest.raises((sqlalchemy.exc.DataError, sqlalchemy.exc.InternalError)):
             station = Station(
                 name="Hauptbahnhof",
                 geom=geom,
@@ -699,7 +681,7 @@ class TestStation(TestGeneral):
             session.commit()
 
     def test_create_station_invalid_electrification(self, session, scenario):
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326)
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 0), srid=4326)
         with pytest.raises(sqlalchemy.exc.IntegrityError):
             # Create a simple station
             station = Station(
@@ -740,7 +722,7 @@ class TestStation(TestGeneral):
         session.rollback()
 
     def test_create_station_complete(self, session, scenario):
-        geom = from_shape(Point(13.304398212525141, 52.4995532470573), srid=4326)
+        geom = from_shape(Point(13.304398212525141, 52.4995532470573, 0), srid=4326)
 
         # Create a simple station
         station = Station(
