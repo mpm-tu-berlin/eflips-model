@@ -1,4 +1,6 @@
+import sqlite3
 from datetime import datetime, timezone
+from sqlite3 import ProgrammingError
 
 import pytest
 import shapely
@@ -529,6 +531,77 @@ class TestRoute(TestGeneral):
             ]
             session.add(route)
             session.commit()
+
+    def test_route_stop_assoc_with_coordinates(self, scenario, stations, session):
+        route = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            distance=100,
+        )
+
+        three_dimension_geom = from_shape(Point(13.32, 52.50, 0), srid=4326)
+
+        route.assoc_route_stations = [
+            AssocRouteStation(
+                scenario=scenario,
+                station=stations[0],
+                route=route,
+                elapsed_distance=0,
+                location=three_dimension_geom,
+            ),
+            AssocRouteStation(
+                scenario=scenario,
+                station=stations[1],
+                route=route,
+                elapsed_distance=route.distance,
+                location=three_dimension_geom,
+            ),
+        ]
+        session.add(route)
+        session.commit()
+        route_id = route.id
+        session.expunge_all()
+
+        route = session.query(Route).filter(Route.id == route_id).one()
+        assert len(route.assoc_route_stations) == 2
+        for assoc in route.assoc_route_stations:
+            assert to_shape(assoc.location).has_z
+            assert to_shape(assoc.location).z == 0
+
+    def test_route_stop_assoc_with_wrong_coordinates(self, scenario, stations, session):
+        route = Route(
+            scenario=scenario,
+            departure_station=stations[0],
+            arrival_station=stations[1],
+            name="1 Hauptbahnhof -> Hauptfriedhof",
+            distance=100,
+        )
+
+        two_dimension_geom = from_shape(Point(13.32, 52.50), srid=4326)
+        with pytest.raises(
+            (ProgrammingError, sqlalchemy.exc.DataError, sqlalchemy.exc.IntegrityError)
+        ):
+            route.assoc_route_stations = [
+                AssocRouteStation(
+                    scenario=scenario,
+                    station=stations[0],
+                    route=route,
+                    elapsed_distance=0,
+                    location=two_dimension_geom,
+                ),
+                AssocRouteStation(
+                    scenario=scenario,
+                    station=stations[1],
+                    route=route,
+                    elapsed_distance=route.distance,
+                    location=two_dimension_geom,
+                ),
+            ]
+            session.add(route)
+            session.commit()
+        session.rollback()
 
     def test_route_stop_assoc_wrong_order(self, scenario, stations, session):
         route = Route(
