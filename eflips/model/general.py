@@ -56,6 +56,8 @@ if TYPE_CHECKING:
 
 
 class ScenarioType(PyEnum):
+    """Classifies a scenario by its provenance: original input, derived mutation, or simulation result."""
+
     SOURCE = auto()
     MUTATION = auto()
     SIMULATION = auto()
@@ -467,6 +469,8 @@ class Scenario(Base):
 
 
 class EnergySource(PyEnum):
+    """The kind of energy a vehicle uses for propulsion."""
+
     BATTERY_ELECTRIC = auto()
     DIESEL = auto()
     HYDROGEN = auto()
@@ -1175,15 +1179,21 @@ class ConsumptionLut(Base):
 
     @staticmethod
     def calc_consumption(
-        trip_distance: float, temperature: float, mass: float, duration: float
+        trip_distance: float,
+        temperature: float,
+        mass: float,
+        duration: float,
+        incline: float = 0.0,
     ) -> float:
         """
         This function calculates the consumption of the trip according to the model of
-        Ji, Bie, Zeng, Wang https://doi.org/10.1016/j.commtr.2022.100069
+        Ji, Bie, Zeng, Wang https://doi.org/10.1016/j.commtr.2022.100069, augmented
+        with a linear physics-based slope term (the original Ji model has none).
         :param trip_distance: Travelled distance in km
         :param temperature: Average temperature during trip in degrees Celsius
         :param mass: Curb weight + passengers in kg
         :param duration: Trip time in minutes
+        :param incline: Average road grade as a fraction (e.g. 0.05 = +5 % uphill, -0.03 = -3 % downhill). Defaults to 0 (level road).
         :return: Trip energy in kWh
         """
 
@@ -1210,10 +1220,16 @@ class ConsumptionLut(Base):
             k = ks[1]
         w2 = k * t_AC_percent * duration
 
+        # Slope contribution: m * g * sin(theta) per metre of travel.
+        # Small-angle: sin(theta) ≈ incline. Distance is in km, so multiply by
+        # 1000 m/km, then convert J → kWh by dividing by 3.6e6, giving / 3600.
+        gravity = 9.81  # m/s^2
+        w_slope: float = mass * gravity * incline * trip_distance / 3600.0  # kWh
+
         # Total trip energy
         # Possible Enhancement: Check why model energy is this low
         correction = 1.0  # Energy seems a bit low compared to other data
-        trip_energy = correction * (w1 + w2)
+        trip_energy = correction * (w1 + w2 + w_slope)
         trip_consumption = trip_energy / trip_distance
 
         return trip_consumption
@@ -1250,19 +1266,23 @@ class ConsumptionLut(Base):
         speed_steps = 11
         speeds = np.linspace(speed_range[0], speed_range[1], speed_steps, endpoint=True)
 
-        # Incline
-        incline = 0
+        # Inclines (fraction of rise / run, e.g. 0.05 = +5 %)
+        incline_range = [-0.10, 0.10]
+        incline_steps = 5
+        inclines = np.linspace(
+            incline_range[0], incline_range[1], incline_steps, endpoint=True
+        )
 
         # Calculate consumption
-        combinations = list(product(temperatures, speeds, level_of_loading))
+        combinations = list(product(temperatures, speeds, level_of_loading, inclines))
 
         consumption_list = []
         for combo in combinations:
-            temp, speed, lol = combo
+            temp, speed, lol, inc = combo
             duration = distance / speed * 60
             mass = (lol + 1) * delta_mass
             consumption = ConsumptionLut.calc_consumption(
-                distance, temp, mass, duration  # type: ignore
+                distance, temp, mass, duration, inc  # type: ignore
             )
             consumption_list.append(consumption)
 
@@ -1273,9 +1293,9 @@ class ConsumptionLut(Base):
                 ConsumptionLut.T_AMB,
                 ConsumptionLut.SPEED,
                 ConsumptionLut.LEVEL_OF_LOADING,
+                ConsumptionLut.INCLINE,
             ],
         )
-        consumption_table[ConsumptionLut.INCLINE] = incline
         consumption_table[ConsumptionLut.CONSUMPTION] = consumption_list
 
         return consumption_table

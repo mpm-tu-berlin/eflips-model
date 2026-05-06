@@ -1533,8 +1533,16 @@ class TestConsumptionLut(TestGeneral):
         assert ConsumptionLut.SPEED in df.columns
         assert ConsumptionLut.CONSUMPTION in df.columns
 
-        # Check that the table has the expected number of rows (11x11x11 combinations)
-        assert len(df) == 11 * 11 * 11
+        # Check that the table has the expected number of rows (11x11x11x5 combinations:
+        # 11 temperatures, 11 speeds, 11 loadings, 5 inclines).
+        assert len(df) == 11 * 11 * 11 * 5
+
+        # The incline axis must include both downhill and uphill, with five
+        # distinct values evenly spanning -10 % to +10 %.
+        unique_inclines = sorted(df[ConsumptionLut.INCLINE].unique())
+        assert len(unique_inclines) == 5
+        assert unique_inclines[0] < 0
+        assert unique_inclines[-1] > 0
 
     def test_table_generator_invalid_vehicle_type(self, session, scenario):
         # Create a vehicle type without empty_mass and allowed_mass
@@ -1644,6 +1652,58 @@ class TestConsumptionLut(TestGeneral):
             match="vehicle_type_or_id must be either a VehicleType object or an int",
         ):
             ConsumptionLut.df_to_consumption_obj(df, 1, "invalid")
+
+    def test_calc_consumption_slope_zero_default(self):
+        # Omitting the incline argument must match passing incline=0.0 exactly.
+        args = (10.0, 20.0, 15000.0, 30.0)
+        assert ConsumptionLut.calc_consumption(
+            *args
+        ) == ConsumptionLut.calc_consumption(*args, 0.0)
+
+    def test_calc_consumption_slope_uphill_increases(self):
+        # Positive incline must raise consumption above the level-road baseline.
+        baseline = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.0)
+        uphill = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.05)
+        assert uphill > baseline
+
+    def test_calc_consumption_slope_downhill_decreases(self):
+        # Negative incline must lower consumption below the level-road baseline.
+        baseline = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.0)
+        downhill = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, -0.05)
+        assert downhill < baseline
+
+    def test_calc_consumption_slope_linear_in_incline(self):
+        # The slope contribution is linear in incline.
+        baseline = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.0)
+        c_x = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.02)
+        c_2x = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.04)
+        assert c_2x - baseline == pytest.approx(2.0 * (c_x - baseline), abs=1e-9)
+
+    def test_calc_consumption_slope_scales_with_mass(self):
+        # Doubling mass roughly doubles the slope coefficient. Mass also enters
+        # the Ji w1 term, so we isolate the slope contribution by subtracting the
+        # zero-incline baseline at each mass.
+        light_baseline = ConsumptionLut.calc_consumption(10.0, 20.0, 7500.0, 30.0, 0.0)
+        light_uphill = ConsumptionLut.calc_consumption(10.0, 20.0, 7500.0, 30.0, 0.05)
+        heavy_baseline = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.0)
+        heavy_uphill = ConsumptionLut.calc_consumption(10.0, 20.0, 15000.0, 30.0, 0.05)
+
+        light_delta = light_uphill - light_baseline
+        heavy_delta = heavy_uphill - heavy_baseline
+        assert heavy_delta == pytest.approx(2.0 * light_delta, rel=1e-6)
+
+    def test_calc_consumption_slope_matches_physics(self):
+        # The slope contribution must equal mass * g * incline / 3600 in kWh/km.
+        trip_distance = 10.0
+        mass = 15000.0
+        incline = 0.05
+        baseline = ConsumptionLut.calc_consumption(trip_distance, 20.0, mass, 30.0, 0.0)
+        with_slope = ConsumptionLut.calc_consumption(
+            trip_distance, 20.0, mass, 30.0, incline
+        )
+        # Per km: (m * g * incline * trip_distance / 3600) / trip_distance
+        expected_delta = mass * 9.81 * incline / 3600.0
+        assert with_slope - baseline == pytest.approx(expected_delta, abs=1e-9)
 
 
 class TestTemperatures(TestGeneral):
