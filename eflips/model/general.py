@@ -1338,16 +1338,22 @@ class ConsumptionLut(Base):
         ]
         data_points = np.array(df.loc[:, columns].values).tolist()
         values = np.array(df.loc[:, ConsumptionLut.CONSUMPTION].values).tolist()
-        return ConsumptionLut(
+        # Only pass the relationship when it is not None — otherwise SQLAlchemy
+        # writes the None through to the FK column on flush and overwrites the
+        # scenario_id / vehicle_class_id we just set.
+        kwargs = dict(
             name=f"Empirical consumption for {vehicle_class.name if vehicle_class else vehicle_class_id}",
             scenario_id=scenario_id,
-            scenario=scenario,
             vehicle_class_id=vehicle_class_id,
-            vehicle_class=vehicle_class,
             columns=columns,
             data_points=data_points,
             values=values,
         )
+        if scenario is not None:
+            kwargs["scenario"] = scenario
+        if vehicle_class is not None:
+            kwargs["vehicle_class"] = vehicle_class
+        return ConsumptionLut(**kwargs)
 
     @classmethod
     def from_vehicle_type(
