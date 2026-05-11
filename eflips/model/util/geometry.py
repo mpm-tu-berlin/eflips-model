@@ -10,8 +10,11 @@ from kv_cache import KVStore  # type: ignore[import-untyped]
 from eflips.model import AssocRouteStation, Route, Station
 
 cache_dir = Path(platformdirs.user_cache_dir("eflips", "de.tu-berlin", "1"))
+cache_dir.mkdir(parents=True, exist_ok=True)
 cache_file = cache_dir / Path("eflips_ingest_altitude_cache.db")
 store = KVStore(str(cache_file.absolute()))
+
+HTTP_TIMEOUT_SECONDS = 10
 
 
 def get_altitude_openelevation(latlon: Tuple[float, float]) -> float:
@@ -24,14 +27,17 @@ def get_altitude_openelevation(latlon: Tuple[float, float]) -> float:
         raise ValueError("OPENELEVATION_URL not set")
     url = f"{os.getenv('OPENELEVATION_URL')}/api/v1/lookup?locations={latlon[0]},{latlon[1]}"
 
-    response = requests.get(url)
+    response = requests.get(url, timeout=HTTP_TIMEOUT_SECONDS)
     response.raise_for_status()
     data = response.json()
-    if "elevation" in data["results"][0]:
-        assert isinstance(data["results"][0]["elevation"], float) or isinstance(
-            data["results"][0]["elevation"], int
+    results = data.get("results")
+    if not isinstance(results, list) or len(results) == 0:
+        raise ValueError("No elevation found")
+    if "elevation" in results[0]:
+        assert isinstance(results[0]["elevation"], float) or isinstance(
+            results[0]["elevation"], int
         )
-        result = data["results"][0]["elevation"]
+        result = results[0]["elevation"]
         # 0 (which is bad, because it can actually exist) and < -9000 are sentinel values for "no elevation found"
         if result == 0 or result < -9000:
             raise ValueError("No elevation found")
@@ -51,16 +57,23 @@ def get_altitude_google(latlon: Tuple[float, float]) -> float:
 
     url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={latlon[0]},{latlon[1]}&key={os.getenv('GOOGLE_MAPS_API_KEY')}"
 
-    response = requests.get(url)
+    response = requests.get(url, timeout=HTTP_TIMEOUT_SECONDS)
     response.raise_for_status()
     data = response.json()
-    if data["status"] != "OK":
+    if data.get("status") != "OK":
         raise ValueError("No elevation found")
-    assert isinstance(data["results"][0]["elevation"], float) or isinstance(
-        data["results"][0]["elevation"], int
+    results = data.get("results")
+    if (
+        not isinstance(results, list)
+        or len(results) == 0
+        or "elevation" not in results[0]
+    ):
+        raise ValueError("No elevation found")
+    assert isinstance(results[0]["elevation"], float) or isinstance(
+        results[0]["elevation"], int
     )
 
-    altitude = data["results"][0]["elevation"]
+    altitude = results[0]["elevation"]
 
     return altitude
 
@@ -86,7 +99,7 @@ def get_altitude(latlon: Tuple[float, float]) -> float:
     elif result_or_none is None:
         try:
             altitude = get_altitude_openelevation(latlon)
-        except ValueError:
+        except (ValueError, requests.RequestException):
             altitude = get_altitude_google(latlon)
         store.set(cache_key, altitude)
     else:
