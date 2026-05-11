@@ -27,4 +27,6 @@ repos:
               tests/.*
           )$
         args: [ --explicit-package-bases, --ignore-missing-imports ]
+        additional_dependencies:
+          - types-requests
 
