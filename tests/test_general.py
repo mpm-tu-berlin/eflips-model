@@ -1621,9 +1621,15 @@ class TestConsumptionLut(TestGeneral):
 
         # Verify the consumption object was created with expected values
         assert consumption.scenario_id == scenario.id
-        assert consumption.scenario is None  # Should be None when using IDs
         assert consumption.vehicle_class_id == vehicle_class.id
-        assert consumption.vehicle_class is None  # Should be None when using IDs
+
+        # Flushing must preserve the FK columns. Previously the constructor was
+        # called with `scenario=None`/`vehicle_class=None` alongside the IDs,
+        # which made SQLAlchemy overwrite the FK with NULL on flush.
+        session.add(consumption)
+        session.flush()
+        assert consumption.scenario_id == scenario.id
+        assert consumption.vehicle_class_id == vehicle_class.id
 
     def test_df_to_consumption_obj_invalid_inputs(self):
         # Create a simple dataframe
