@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-model"
-version = "11.0.2"
+version = "11.1.0"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
 	"Ludger Heide <ludger.heide@tu-berlin.de>",
@@ -23,6 +23,9 @@ pandas = "^2.2.0"
 numpy = "^2.2.0"
 shapely = "^2.1.0"
 pyproj = "^3.7.1"
+requests = "^2.31.0"
+platformdirs = "^4.9.6"
+kv-cache = "^0.3.4"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -36,6 +39,7 @@ sphinx-paramlinks = "^0.6.0"
 types-psycopg2 = "^2.9.21.20240417"
 pandas-stubs = "^2.2.0"
 svgwrite = "^1.4.3"
+types-requests = "^2.31.0.20240125"
 
 [build-system]
 requires = ["poetry-core"]
