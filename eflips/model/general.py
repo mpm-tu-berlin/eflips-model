@@ -605,10 +605,10 @@ class VehicleType(Base):
         nullable=True,
         server_default="""
         {
-            "useful_life":14,
+            "useful_life": 14,
             "procurement_cost": null,
-            "procurement_cost_diesel": null,
-            "cost_escalation": 0.02
+            "cost_escalation": 0.02,
+            "average_electricity_consumption": 1.5
         }
         """,
     )
@@ -618,11 +618,69 @@ class VehicleType(Base):
     - "useful_life": The expected operational lifetime of the vehicle in years
     - "procurement_cost": The initial purchase cost per vehicle
     - "cost_escalation": Annual cost escalation factor as a decimal between 0 and 1 (e.g., 0.02 represents 2% annual cost increase)
+    - "average_electricity_consumption": energy consumption in kWh/km VehicleType has energy_source BATTERY_ELECTRIC. 
+        If energy_source is DIESEL, average_diesel_consumption in l/km is to be filled in.
     """
 
-    lca_params: Mapped[Dict[str, Any]] = mapped_column(
+    lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
+        server_default="""
+        {
+            "chassis_emission_factors_per_kg": {
+                "gwp": 7.1450240595,
+                "pm": 0.0130150898,
+                "pocp": 0.0165275622,
+                "ap": 0.0241323025,
+                "ep_freshwater": 0.0032166873,
+                "ep_marine": 0.0002458706,
+                "fuel": 1.8687034456,
+                "water": 0.0416410873
+            },
+            "motor_rated_power_kw": 200.0,
+            "motor_emission_factors_per_kg": {
+                "gwp": 10.4222178848,
+                "pm": 0.0396204048,
+                "pocp": 0.0369665863,
+                "ap": 0.1049725031,
+                "ep_freshwater": 0.0078134135,
+                "ep_marine": 0.0003415405,
+                "fuel": 2.5539152597,
+                "water": 0.0632562358
+            },
+            "motor_power_to_weight_ratio": 1.5,
+            "motor_emission_factors_per_unit": null,
+            "motor_mass_kg": null,
+            "vehicle_lifetime_years": 12.0,
+            "efficiency_mv_to_lv": 0.99,
+            "efficiency_lv_ac_to_dc": 0.95,
+            "electricity_emission_factors_per_kwh": {
+                "gwp": 0.4197609117257143,
+                "pm": 1.465410857142857e-05,
+                "pocp": 0.000604223382857143,
+                "ap": 0.00038782769142857145,
+                "ep_freshwater": 0.0007912056857142857,
+                "ep_marine": 4.684067999999999e-05,
+                "fuel": 0.09882671976,
+                "water": 0.0026895370114285713
+            },
+            "diesel_emission_factors_per_kg": null,
+            "average_consumption_kwh_per_km": 1.5,
+            "diesel_consumption_kg_per_km": null,
+            "maintenance_per_year": {
+                "BATTERY_ELECTRIC": {
+                    "gwp": 2557.781999876,
+                    "pm": 1.5140544646,
+                    "pocp": 3.7768838271,
+                    "ap": 4.6374171771,
+                    "ep_freshwater": 1.9245437185,
+                    "ep_marine": 0.351172717,
+                    "fuel": 766.0160472554,
+                    "water": 17.4877028381
+                }
+              }
+            }        
+            """,
     )
     """LCA (Life Cycle Assessment) parameters for this vehicle type.
 
@@ -762,9 +820,26 @@ class BatteryType(Base):
       represents a 3% annual cost reduction.
     """
 
-    lca_params: Mapped[Dict[str, Any]] = mapped_column(
+    lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
+        server_default=
+        """
+        {
+            "emission_factors_per_kg": 
+            {
+                "gwp": 14.7545001202,
+                "pm": -0.0183173103,
+                "pocp": 0.0485464758,
+                "ap": -0.05589953259999997,
+                "ep_freshwater": 0.0067215502,
+                "ep_marine": 0.0007635275,
+                "fuel": 4.1624314205,
+                "water": 0.0873524419
+            },
+            "battery_lifetime_years": 8.0
+            }
+        """
     )
     """LCA parameters for this battery type.
 
@@ -1499,9 +1574,69 @@ class ChargingPointType(Base):
       Used to project future operational costs over the useful life period.
     """
 
-    lca_params: Mapped[Dict[str, Any]] = mapped_column(
+    lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
+        server_default=
+        """
+            {
+              "control_unit_emissions": {
+                "gwp": 650.2638448711001,
+                "pm": 14.284577223300001,
+                "pocp": 7.161514969900001,
+                "ap": 49.9366794504,
+                "ep_freshwater": -1.3148274563,
+                "ep_marine": -0.038361769399999995,
+                "fuel": 198.08683628949998,
+                "water": 0.16472508080000026
+              },
+              "power_unit_emission": {
+                "gwp": 4517.1716509588005,
+                "pm": 73.75310580600001,
+                "pocp": 39.562258428,
+                "ap": 256.6122330522,
+                "ep_freshwater": -6.1600977037,
+                "ep_marine": -0.1553323559,
+                "fuel": 1210.095218871,
+                "water": 9.0850155355
+              },
+              "power_unit_rated_power_kw": 350.0,
+              "user_unit_emission": {
+                "gwp": 528.0177374135001,
+                "pm": 6.282905781799999,
+                "pocp": 3.1490487038,
+                "ap": 19.1536947284,
+                "ep_freshwater": -0.272372094,
+                "ep_marine": -0.0067322579,
+                "fuel": 159.8769760205,
+                "water": 1.3416479734999998
+              },
+              "transformer_emissions": {
+                "gwp": 8100.000000000007,
+                "pm": 17.27999999999999,
+                "pocp": 20.48595930631943,
+                "ap": 54.50000000000005,
+                "ep_freshwater": 2.200000000000002,
+                "ep_marine": 5.400000000000005,
+                "fuel": 3200.000000000003,
+                "water": 3966.81
+              },
+              "transformer_ref_power_kw": 315.0,
+              "concrete_emissions_per_m3": {
+                "gwp": 307.953,
+                "pm": 0.298,
+                "pocp": 1.801,
+                "ap": 0.684,
+                "ep_freshwater": 0.037,
+                "ep_marine": 0.003,
+                "fuel": 48.306,
+                "water": 2.677
+              },
+              "foundation_volume_per_point_m3": 3.96,
+              "infrastructure_lifetime_years": 20.0
+            }        
+        
+        """
     )
     """LCA parameters for this charging point type.
 
