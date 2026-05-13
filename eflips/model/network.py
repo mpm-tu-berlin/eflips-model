@@ -115,11 +115,15 @@ class Route(Base):
     """The length of the route in meters."""
 
     geom: Mapped[Geometry] = mapped_column(
-        Geometry("LINESTRING", srid=4326), nullable=True
+        Geometry("LINESTRINGZ", srid=4326, dimension=3), nullable=True
     )
     """
-    The shape of the route as a polyline. If set, the length of this shape must be within 50 meters of
-    :attr:`Route.distance`. Use WGS84 coordinates (EPSG:4326).
+    The shape of the route as a 3D polyline (X = lon, Y = lat, Z = elevation in
+    meters). If set, the 2D ground length of this shape must be within 50
+    meters of :attr:`Route.distance` — Z is ignored by the length check, by
+    PostGIS' ``ST_Length(..., true)`` and SpatiaLite's ``GeodesicLength``.
+    Use WGS84 coordinates (EPSG:4326). Z = 0 is acceptable when elevation is
+    unknown; populate it via the ``eflips-ingest`` elevation backfill.
     """
 
     trips: Mapped[List["Trip"]] = relationship("Trip", back_populates="route")
@@ -323,8 +327,12 @@ class Station(Base):
     name_short: Mapped[str] = mapped_column(Text, nullable=True)
     """The short name of the station (if available)."""
 
-    geom: Mapped[Geometry] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
-    """The (optional) location of the station as a point. Use WGS84 coordinates (EPSG:4326)."""
+    geom: Mapped[Geometry] = mapped_column(
+        Geometry("POINTZ", srid=4326, dimension=3), nullable=True
+    )
+    """The (optional) 3D location of the station (X = lon, Y = lat, Z =
+    elevation in meters). Use WGS84 coordinates (EPSG:4326). Z = 0 is
+    acceptable when elevation is unknown."""
 
     is_electrified = mapped_column(Boolean, nullable=False)
     """
@@ -503,9 +511,11 @@ class AssocRouteStation(Base):
     """The station."""
 
     location: Mapped[Geometry] = mapped_column(
-        Geometry("POINT", srid=4326), nullable=True
+        Geometry("POINTZ", srid=4326, dimension=3), nullable=True
     )
-    """An optional precise location of the this route's stop at the station. Use WGS84 coordinates (EPSG:4326)."""
+    """An optional precise 3D location of this route's stop at the station
+    (X = lon, Y = lat, Z = elevation in meters). Use WGS84 coordinates
+    (EPSG:4326). Z = 0 is acceptable when elevation is unknown."""
 
     elapsed_distance: Mapped[float] = mapped_column(Float, nullable=False)
     """The distance in m that the bus has traveled when it reached this stop."""
