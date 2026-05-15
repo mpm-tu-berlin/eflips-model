@@ -619,7 +619,7 @@ class VehicleType(Base):
     - "procurement_cost": The initial purchase cost per vehicle
     - "cost_escalation": Annual cost escalation factor as a decimal between 0 and 1 (e.g., 0.02 represents 2% annual cost increase)
     - "average_electricity_consumption": energy consumption in kWh/km VehicleType has energy_source BATTERY_ELECTRIC. 
-        If energy_source is DIESEL, average_diesel_consumption in l/km is to be filled in.
+    If energy_source is DIESEL, average_diesel_consumption in l/km is to be filled in.
     """
 
     lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
