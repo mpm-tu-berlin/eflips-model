@@ -823,8 +823,7 @@ class BatteryType(Base):
     lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
-        server_default=
-        """
+        server_default="""
         {
             "emission_factors_per_kg": 
             {
@@ -839,7 +838,7 @@ class BatteryType(Base):
             },
             "battery_lifetime_years": 8.0
             }
-        """
+        """,
     )
     """LCA parameters for this battery type.
 
@@ -1577,8 +1576,7 @@ class ChargingPointType(Base):
     lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
         postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
         nullable=True,
-        server_default=
-        """
+        server_default="""
             {
               "control_unit_emissions": {
                 "gwp": 650.2638448711001,
@@ -1636,7 +1634,7 @@ class ChargingPointType(Base):
               "infrastructure_lifetime_years": 20.0
             }        
         
-        """
+        """,
     )
     """LCA parameters for this charging point type.
 
