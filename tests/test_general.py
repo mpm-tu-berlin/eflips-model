@@ -93,7 +93,7 @@ class TestGeneral:
         )
         session.add(vehicle_type)
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass=100, chemistry="LFP"
         )
         session.add(battery_type)
         vehicle_type.battery_type = battery_type
@@ -731,7 +731,7 @@ class TestVehicleType(TestGeneral):
 
         # Create one with all fields
         battery_type = BatteryType(
-            scenario=scenario, specific_mass=100, chemistry={"test": "test"}
+            scenario=scenario, specific_mass=100, chemistry="LFP"
         )
         vehicle_type = VehicleType(
             name="Test Vehicle Type",
@@ -891,7 +891,7 @@ class TestBatteryType(TestGeneral):
         battery_type = BatteryType(
             scenario=scenario,
             specific_mass=100,
-            chemistry={"test": "test"},
+            chemistry="LFP",
             tco_parameters={
                 "procurement": 350.0,
                 "lifetime": 6,
