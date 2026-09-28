@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-model"
-version = "11.2.0"
+version = "11.3.0"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
 	"Ludger Heide <ludger.heide@tu-berlin.de>",
@@ -26,6 +26,7 @@ pyproj = "^3.7.1"
 requests = "^2.31.0"
 platformdirs = "^4.9.6"
 kv-cache = "^0.3.4"
+typing-extensions = "^4.5"
 
 
 [tool.poetry.group.dev.dependencies]
