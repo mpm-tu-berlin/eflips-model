@@ -159,6 +159,7 @@ def setup_database(engine: sqlalchemy.Engine) -> None:
         "script_location",
         str(importlib.resources.files("eflips.model").joinpath("migrations")),
     )
+    alembic_cfg.attributes["configure_logger"] = False
     command.stamp(alembic_cfg, "head")
 
 

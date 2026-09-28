@@ -13,9 +13,12 @@ import eflips.model
 # access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
+# Interpret the config file for Python logging, but only when run from the alembic CLI.
+# Library callers (setup_database) set configure_logger=False so that the host
+# application's logging configuration is left untouched.
+if config.config_file_name is not None and config.attributes.get(
+    "configure_logger", True
+):
     fileConfig(config.config_file_name)
 
 # Set the database_url from the environment variable
