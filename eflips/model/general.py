@@ -1272,6 +1272,41 @@ class ConsumptionLut(Base):
     SPEED = "mean_speed_kmh"
     CONSUMPTION = "consumption_kwh_per_km"
 
+    # Uphill drivetrain efficiency (battery -> wheels, drivetrain only).
+    # Tietz, Fadranski, Göhlich (2026), "Dynamic Energy Consumption Modeling for
+    # Battery Electric Heavy-Duty Trucks: Elevation-Aware Networks and Real-World
+    # Validation", ITEC+EATS 2026, doi:10.1109/ITECEATS66641.2026.11593007. Real-world
+    # measurements give 80-95 % total drivetrain efficiency while accelerating; the
+    # lower end is used deliberately as a conservative (worst-case) assumption, in
+    # line with the design temperature philosophy of the dissertation. Measured on
+    # trucks, not buses.
+    ETA_UPHILL = 0.80
+
+    # Recuperation drivetrain efficiency (wheels -> battery terminals, drivetrain
+    # only; already includes motor and inverter, do not add a separate inverter
+    # factor). Same source as ETA_UPHILL, approx. 87 % from wheels to battery
+    # terminals.
+    ETA_RECUPERATION = 0.87
+
+    # Battery charging efficiency (battery terminals -> stored energy), for the low
+    # C-rates expected during recuperation. A 22 t bus descending a 5 % grade at
+    # 30 km/h feeds about 90 kW into the battery, i.e. a C-rate of 0.15 on a 600 kWh
+    # pack and 0.3 on a 300 kWh pack. Su et al. (2023), "Experimental Study on
+    # Charging Energy Efficiency of Lithium-Ion Battery under Different Charging
+    # Stress", J. Energy Storage, doi:10.1016/j.est.2023.107793, measure about 0.975
+    # at C-rate 0.5 (and treat discharge losses as negligible); Safoutin et al.
+    # (2015), "Effect of Current and SOC on Round-Trip Energy Efficiency of a
+    # LiFePO4 Battery Pack", SAE 2015-01-1186, doi:10.4271/2015-01-1186, give 0.972
+    # round-trip at C-rate 0.5 and 0.92 at C-rate 2. 0.95 sits conservatively between
+    # the low-C-rate values and the C-rate-2 value. No charger efficiency is applied:
+    # recuperated energy never passes an external charger, so the grid-side charger
+    # figure used elsewhere does not apply here. No recuperation power cap is
+    # applied either: 90-180 kW of regenerative power on 5-10 % grades is well
+    # inside the motor rating of an articulated e-bus and the charging limit of its
+    # battery, so mechanical braking is not modelled (regeneration failing at very
+    # low speed is second order).
+    ETA_BATTERY_CHARGE = 0.95
+
     @staticmethod
     def calc_consumption(
         trip_distance: float,
@@ -1279,6 +1314,9 @@ class ConsumptionLut(Base):
         mass: float,
         duration: float,
         incline: float = 0.0,
+        eta_uphill: float = ETA_UPHILL,
+        eta_recuperation: float = ETA_RECUPERATION,
+        eta_battery_charge: float = ETA_BATTERY_CHARGE,
     ) -> float:
         """
         This function calculates the consumption of the trip according to the model of
@@ -1289,6 +1327,9 @@ class ConsumptionLut(Base):
         :param mass: Curb weight + passengers in kg
         :param duration: Trip time in minutes
         :param incline: Average road grade as a fraction (e.g. 0.05 = +5 % uphill, -0.03 = -3 % downhill). Defaults to 0 (level road).
+        :param eta_uphill: Drivetrain efficiency (battery -> wheels) applied to the uphill slope term.
+        :param eta_recuperation: Drivetrain efficiency (wheels -> battery terminals) applied to the downhill slope term.
+        :param eta_battery_charge: Battery charging efficiency (battery terminals -> stored energy) applied to the downhill slope term.
         :return: Trip energy in kWh
         """
 
@@ -1316,10 +1357,20 @@ class ConsumptionLut(Base):
         w2 = k * t_AC_percent * duration
 
         # Slope contribution: m * g * sin(theta) per metre of travel.
-        # Small-angle: sin(theta) ≈ incline. Distance is in km, so multiply by
-        # 1000 m/km, then convert J → kWh by dividing by 3.6e6, giving / 3600.
+        # Small-angle: sin(theta) ≈ incline (error < 0.5 % at 10 %). Distance is in
+        # km, so multiply by 1000 m/km, then convert J → kWh by dividing by 3.6e6,
+        # giving / 3600. This is the pure potential energy; it is then split by the
+        # sign of the incline and scaled by the drivetrain/battery efficiencies
+        # documented above ConsumptionLut.ETA_UPHILL, so that climbing costs more
+        # than the potential energy and descending recovers less of it.
         gravity = 9.81  # m/s^2
-        w_slope: float = mass * gravity * incline * trip_distance / 3600.0  # kWh
+        w_potential: float = (
+            mass * gravity * incline * trip_distance / 3600.0
+        )  # kWh, signed
+        if incline >= 0:
+            w_slope = w_potential / eta_uphill
+        else:
+            w_slope = w_potential * eta_recuperation * eta_battery_charge
 
         # Total trip energy
         # Possible Enhancement: Check why model energy is this low
