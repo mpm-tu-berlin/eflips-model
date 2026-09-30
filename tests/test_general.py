@@ -1544,6 +1544,60 @@ class TestConsumptionLut(TestGeneral):
         assert unique_inclines[0] < 0
         assert unique_inclines[-1] > 0
 
+    def test_table_generator_mass_matches_calc_consumption(self, session, scenario):
+        # Regression test for the level-of-loading -> mass conversion in
+        # table_generator(): at level_of_loading == 0 the table must use
+        # empty_mass, and at level_of_loading == 1 it must use allowed_mass,
+        # not the payload span (allowed_mass - empty_mass).
+        empty_mass = 12000.0
+        allowed_mass = 12000.0 + 70 * 68
+        vehicle_type = VehicleType(
+            scenario=scenario,
+            name="Test Vehicle Type",
+            battery_capacity=100,
+            charging_curve=[[0, 150], [1, 150]],
+            opportunity_charging_capable=True,
+            empty_mass=empty_mass,
+            allowed_mass=allowed_mass,
+        )
+        session.add(vehicle_type)
+        session.commit()
+
+        df = ConsumptionLut.table_generator(vehicle_type)
+
+        distance = 10  # matches the fixed distance used inside table_generator
+        temperature = 10.0
+        speed = 27.0
+        duration = distance / speed * 60
+
+        row_empty = df[
+            (df[ConsumptionLut.INCLINE] == 0)
+            & (df[ConsumptionLut.LEVEL_OF_LOADING] == 0)
+            & (df[ConsumptionLut.T_AMB] == temperature)
+            & (df[ConsumptionLut.SPEED] == speed)
+        ]
+        assert len(row_empty) == 1
+        expected_empty = ConsumptionLut.calc_consumption(
+            distance, temperature, empty_mass, duration
+        )
+        assert row_empty[ConsumptionLut.CONSUMPTION].iloc[0] == pytest.approx(
+            expected_empty
+        )
+
+        row_full = df[
+            (df[ConsumptionLut.INCLINE] == 0)
+            & (df[ConsumptionLut.LEVEL_OF_LOADING] == 1)
+            & (df[ConsumptionLut.T_AMB] == temperature)
+            & (df[ConsumptionLut.SPEED] == speed)
+        ]
+        assert len(row_full) == 1
+        expected_full = ConsumptionLut.calc_consumption(
+            distance, temperature, allowed_mass, duration
+        )
+        assert row_full[ConsumptionLut.CONSUMPTION].iloc[0] == pytest.approx(
+            expected_full
+        )
+
     def test_table_generator_invalid_vehicle_type(self, session, scenario):
         # Create a vehicle type without empty_mass and allowed_mass
         vehicle_type = VehicleType(

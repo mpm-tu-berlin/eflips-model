@@ -1375,7 +1375,7 @@ class ConsumptionLut(Base):
         for combo in combinations:
             temp, speed, lol, inc = combo
             duration = distance / speed * 60
-            mass = (lol + 1) * delta_mass
+            mass = minimum_mass + lol * delta_mass
             consumption = ConsumptionLut.calc_consumption(
                 distance, temp, mass, duration, inc  # type: ignore
             )
