@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.alter_column(
         "ConsumptionLut",
         "columns",
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         nullable=False,
     )
     # ### end Alembic commands ###
@@ -34,7 +34,7 @@ def downgrade() -> None:
     op.alter_column(
         "ConsumptionLut",
         "columns",
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         nullable=True,
     )
     # ### end Alembic commands ###

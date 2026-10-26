@@ -27,7 +27,7 @@ def upgrade() -> None:
         "BatteryType",
         "tco_parameters",
         server_default='{"useful_life": 7, "cost_escalation": -0.03, "procurement_cost": null}',
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -36,7 +36,7 @@ def upgrade() -> None:
         "ChargingPointType",
         "tco_parameters",
         server_default='{"useful_life": 20, "cost_escalation": 0.02, "procurement_cost": null}',
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -45,7 +45,7 @@ def upgrade() -> None:
         "Scenario",
         "tco_parameters",
         server_default='{"taxes": 0, "insurance": 0, "pef_wages": 0.025, "maint_cost": null, "pef_energy": 0.038, "staff_cost": null, "energy_cost": null, "pef_general": 0.02, "interest_rate": 0.04, "pef_insurance": 0.02, "inflation_rate": 0.02, "maint_infr_cost": null, "project_duration": 20}',
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -54,7 +54,7 @@ def upgrade() -> None:
         "Station",
         "tco_parameters",
         server_default='{"useful_life": 20, "cost_escalation": 0.02, "procurement_cost": null}',
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -63,7 +63,7 @@ def upgrade() -> None:
         "VehicleType",
         "tco_parameters",
         server_default='{"useful_life": 14, "cost_escalation": 0.02, "procurement_cost": null}',
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -78,7 +78,7 @@ def downgrade() -> None:
         "BatteryType",
         "tco_parameters",
         server_default=None,
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -87,7 +87,7 @@ def downgrade() -> None:
         "ChargingPointType",
         "tco_parameters",
         server_default=None,
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -96,7 +96,7 @@ def downgrade() -> None:
         "Scenario",
         "tco_parameters",
         server_default=None,
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -105,7 +105,7 @@ def downgrade() -> None:
         "Station",
         "tco_parameters",
         server_default=None,
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
@@ -114,7 +114,7 @@ def downgrade() -> None:
         "VehicleType",
         "tco_parameters",
         server_default=None,
-        existing_type=postgresql.JSONB(astext_type=sa.Text()),  # type: ignore
+        existing_type=postgresql.JSONB(astext_type=sa.Text()),
         existing_nullable=True,
     )
 
