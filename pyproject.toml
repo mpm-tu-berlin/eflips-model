@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eflips-model"
-version = "11.3.2"
+version = "11.4.0"
 description = "A common data model for the eflips family of electric vehicle simulation & optimization tools."
 authors = [
 	"Ludger Heide <ludger.heide@tu-berlin.de>",
@@ -14,7 +14,7 @@ packages = [{ include = "eflips/model" }]
 include= ["LICENSE.md"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.11,<3.16"
 sqlalchemy = "^2.0.23"
 alembic = "^1.12.1"
 geoalchemy2 = "^0.15.0"
