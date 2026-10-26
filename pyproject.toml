@@ -15,7 +15,7 @@ include= ["LICENSE.md"]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.16"
-sqlalchemy = "^2.0.23"
+sqlalchemy = ">=2.0.23,<2.1"
 alembic = "^1.12.1"
 geoalchemy2 = "^0.15.0"
 psycopg2-binary = "^2.9.10"
