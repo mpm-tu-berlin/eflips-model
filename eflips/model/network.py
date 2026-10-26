@@ -392,7 +392,7 @@ class Station(Base):
     """The charging point type. This is used to represent the different types of charging points installed at stations or areas. It is mainly relevant for TCO calculations."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
         {

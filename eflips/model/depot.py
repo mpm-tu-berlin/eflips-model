@@ -1229,7 +1229,7 @@ class Process(Base):
     charging equipment to be provided."""
 
     availability: Mapped[List[Tuple[datetime, datetime]]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON(), "sqlite"), nullable=True  # type: ignore
+        postgresql.JSONB().with_variant(JSON(), "sqlite"), nullable=True
     )
     """Temporal availability of this process represented by a list of start and end times. Null means this process is 
     always available."""

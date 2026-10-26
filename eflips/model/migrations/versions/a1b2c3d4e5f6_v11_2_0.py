@@ -23,13 +23,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.add_column(
-        "VehicleType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)  # type: ignore[no-untyped-call]
+        "VehicleType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)
     )
     op.add_column(
-        "BatteryType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)  # type: ignore[no-untyped-call]
+        "BatteryType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)
     )
     op.add_column(
-        "ChargingPointType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)  # type: ignore[no-untyped-call]
+        "ChargingPointType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)
     )
 
     # Migrate BatteryType.chemistry: JSONB -> Text
@@ -42,7 +42,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Reverse chemistry migration: Text -> JSONB
     op.add_column(
-        "BatteryType", sa.Column("chemistry_old", postgresql.JSONB(), nullable=True)  # type: ignore[no-untyped-call]
+        "BatteryType", sa.Column("chemistry_old", postgresql.JSONB(), nullable=True)
     )
     op.execute('UPDATE "BatteryType" SET chemistry_old = to_jsonb(chemistry)')
     op.drop_column("BatteryType", "chemistry")

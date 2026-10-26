@@ -111,13 +111,13 @@ class Scenario(Base):
     """
     default_simba_options: str = '{"eta": false, "days": null, "mode": ["sim", "report"], "seed": 1, "config": null, "margin": 1, "logfile": "", "interval": 1, "loglevel": "INFO", "strategy": "distributed", "show_plots": false, "skip_plots": true, "cs_power_opps": 300, "gc_power_deps": 100000, "gc_power_opps": 100000, "input_schedule": null, "PRICE_THRESHOLD": -100, "rotation_filter": null, "signal_time_dif": 10, "cost_calculation": false, "desired_soc_deps": 1.0, "desired_soc_opps": 1.0, "optimizer_config": null, "output_directory": "data/sim_outputs", "include_price_csv": null, "min_charging_time": 0, "station_data_path": null, "ALLOW_NEGATIVE_SOC": true, "cs_power_deps_depb": 150, "cs_power_deps_oppb": 150, "vehicle_types_path": "data/examples/vehicle_types.json", "cost_parameters_file": null, "electrified_stations": null, "default_voltage_level": "MV", "propagate_mode_errors": false, "min_recharge_deps_depb": 1, "min_recharge_deps_oppb": 1, "preferred_charging_type": "depb", "default_buffer_time_opps": 0, "include_price_csv_option": [], "rotation_filter_variable": null, "check_rotation_consistency": false, "skip_inconsistent_rotations": false, "level_of_loading_over_day_path": null, "outside_temperature_over_day_path": null}'
     simba_options: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=False,
         server_default=default_simba_options,
     )
     """The options for the simBA simulation. Stored as a JSON object."""
     eflips_depot_options: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=True  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=True
     )
     """The options for the eflips-depot simulation. Stored as a JSON object."""
     task_id: Mapped[uuid.UUID] = mapped_column(
@@ -132,7 +132,7 @@ class Scenario(Base):
     """The unique identifier of the manager. Only used in the `django.simba` project."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
             {
@@ -601,7 +601,7 @@ class VehicleType(Base):
     _table_args_list.append(allowed_mass_constraint)
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
         {
@@ -623,7 +623,7 @@ class VehicleType(Base):
     """
 
     lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
         {
@@ -792,7 +792,7 @@ class BatteryType(Base):
     """The chemistry of the battery as a plain string, e.g. ``'LFP'`` or ``'NMC622'``."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
         {
@@ -821,7 +821,7 @@ class BatteryType(Base):
     """
 
     lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
         {
@@ -1096,7 +1096,7 @@ class Event(Base):
     """A description of the event. Used to display additional information to the user."""
 
     timeseries: Mapped[Dict[str, List[Union[datetime, str, float]]]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=True  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=True
     )
     """
     Dict with mandatory keys „time“ (ISO 18601 with TZ), „soc“ (0-1) and optional keys „distance“ (m, along route for 
@@ -1240,7 +1240,7 @@ class ConsumptionLut(Base):
     """The vehicle class."""
 
     columns = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=False  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"), nullable=False
     )
     """
     A JSON-encoded list of column name strings. The order of these should match the order of the values for each row
@@ -1428,7 +1428,7 @@ class ConsumptionLut(Base):
             duration = distance / speed * 60
             mass = minimum_mass + lol * delta_mass
             consumption = ConsumptionLut.calc_consumption(
-                distance, temp, mass, duration, inc  # type: ignore
+                distance, temp, mass, duration, inc
             )
             consumption_list.append(consumption)
 
@@ -1600,7 +1600,7 @@ class ChargingPointType(Base):
     """The short name of the charging point type (if available)."""
 
     tco_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
         {
@@ -1625,7 +1625,7 @@ class ChargingPointType(Base):
     """
 
     lca_parameters: Mapped[Dict[str, Any]] = mapped_column(
-        postgresql.JSONB().with_variant(JSON, "sqlite"),  # type: ignore
+        postgresql.JSONB().with_variant(JSON, "sqlite"),
         nullable=True,
         server_default="""
             {
