@@ -29,7 +29,8 @@ def upgrade() -> None:
         "BatteryType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)
     )
     op.add_column(
-        "ChargingPointType", sa.Column("lca_parameters", postgresql.JSONB(), nullable=True)
+        "ChargingPointType",
+        sa.Column("lca_parameters", postgresql.JSONB(), nullable=True),
     )
 
     # Migrate BatteryType.chemistry: JSONB -> Text
